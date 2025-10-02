@@ -10,7 +10,8 @@ services:
         ca-certificates \
         sqlite3 \
         unzip \
-        git
+        git \
+        build-essential
       
       # Installer Node.js 20.x
       mkdir -p /etc/apt/keyrings
@@ -21,16 +22,22 @@ services:
       # Installer les dépendances PHP
       composer install --no-dev --optimize-autoloader --no-interaction
       
-      # Installer les dépendances Node et construire les assets
+      # Installer les dépendances Node
       npm ci --prefer-offline --no-audit --progress=false
+      
+      # Construire les assets pour la production
       npm run build
       
       # Créer le répertoire de base de données
       mkdir -p /opt/render/project/.database
       touch /opt/render/project/.database/database.sqlite
       
+      # Créer le répertoire build s'il n'existe pas
+      mkdir -p public/build
+      
       # Configurer les permissions
       chmod -R 775 storage bootstrap/cache public/build
+      chown -R www-data:www-data storage bootstrap/cache public/build
       
       # Configurer l'application
       php artisan config:clear
