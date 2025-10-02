@@ -25,11 +25,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copier d'abord uniquement les fichiers nécessaires pour l'installation des dépendances
-COPY package*.json ./
-COPY composer.* ./
+COPY composer.json composer.lock ./
 
-# Installer les dépendances PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Installer les dépendances PHP sans exécuter les scripts post-install
+RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interaction
 
 # Installer les dépendances Node
 RUN npm ci --prefer-offline --no-audit --progress=false
@@ -37,8 +36,12 @@ RUN npm ci --prefer-offline --no-audit --progress=false
 # Copier le reste des fichiers
 COPY . .
 
-# Construire les assets
-RUN npm run build
+# Exécuter les scripts post-install maintenant que tous les fichiers sont en place
+RUN composer run-script post-autoload-dump
+
+# Installer les dépendances Node et construire les assets
+RUN npm ci --prefer-offline --no-audit --progress=false && \
+    npm run build
 
 # Configurer Nginx
 COPY docker/nginx.conf /etc/nginx/nginx.conf
