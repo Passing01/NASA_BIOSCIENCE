@@ -27,39 +27,35 @@ WORKDIR /var/www/html
 # Copier d'abord uniquement les fichiers nécessaires pour l'installation des dépendances
 COPY composer.json composer.lock ./
 
-# Installer les dépendances PHP sans exécuter les scripts post-install
+# Installer les dépendances PHP sans exécuter les scripts
 RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interaction
-
-# Installer les dépendances Node
-RUN npm ci --prefer-offline --no-audit --progress=false
 
 # Copier le reste des fichiers
 COPY . .
 
-# Exécuter les scripts post-install maintenant que tous les fichiers sont en place
-RUN composer run-script post-autoload-dump
+# Créer les répertoires nécessaires et configurer les permissions
+RUN mkdir -p storage/framework/{sessions,views,cache} \
+    && mkdir -p storage/logs \
+    && touch database/database.sqlite \
+    && chown -R www-data:www-data storage bootstrap/cache public database \
+    && chmod -R 775 storage bootstrap/cache
 
 # Installer les dépendances Node et construire les assets
-RUN npm ci --prefer-offline --no-audit --progress=false && \
-    npm run build
+RUN npm ci --prefer-offline --no-audit --progress=false \
+    && npm run build
+
+# Exécuter les scripts post-install maintenant que tous les fichiers sont en place
+RUN composer run-script post-autoload-dump --no-interaction \
+    && php artisan storage:link
 
 # Configurer Nginx
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Créer les répertoires nécessaires et configurer les permissions
-RUN mkdir -p /var/www/html/storage/framework/{sessions,views,cache} \
-    && mkdir -p /var/www/html/storage/logs \
-    && touch /var/www/html/database/database.sqlite \
-    && chown -R www-data:www-data /var/www/html/storage \
-    /var/www/html/bootstrap/cache \
-    /var/www/html/public/build \
-    /var/www/html/database/database.sqlite \
-    && chmod -R 775 /var/www/html/storage \
-    /var/www/html/bootstrap/cache \
-    /var/www/html/public/build \
-    /var/www/html/database/database.sqlite \
-    && php artisan storage:link
+# Nettoyer le cache
+RUN apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/*
 
 # Exposer le port
 EXPOSE 10000
