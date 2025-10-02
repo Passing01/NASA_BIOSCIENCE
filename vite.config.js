@@ -72,4 +72,12 @@ export default defineConfig({
     optimizeDeps: {
         include: ['react', 'react-dom', '@inertiajs/react'],
     },
+    server: {
+        hmr: {
+            host: 'localhost',
+        },
+    },
+    commonjsOptions: {
+        transformMixedEsModules: true,
+    }
 });

@@ -22,6 +22,9 @@ COPY . .
 # Installer les dépendances
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+RUN npm install && \
+    npm run build
+
 # Créer le répertoire pour SQLite
 RUN mkdir -p /var/www/html/database && \
     touch /var/www/html/database/database.sqlite && \
