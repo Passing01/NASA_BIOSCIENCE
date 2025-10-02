@@ -1,71 +1,15 @@
 services:
   - type: web
     name: nasa-bioscience
-    env: php
+    env: docker
+    dockerfilePath: ./Dockerfile
     buildCommand: |
-      # Mettre à jour et installer les dépendances système
-      apt-get update && apt-get install -y \
-        curl \
-        gnupg \
-        ca-certificates \
-        sqlite3 \
-        unzip \
-        git \
-        build-essential
-      
-      # Installer Node.js 20.x
-      mkdir -p /etc/apt/keyrings
-      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
-      apt-get update && apt-get install -y nodejs
-      
-      # Installer les dépendances PHP
-      composer install --no-dev --optimize-autoloader --no-interaction
-      
-      # Installer les dépendances Node
-      npm ci --prefer-offline --no-audit --progress=false
-      
-      # Construire les assets pour la production
-      npm run build
-      
-      # Créer le répertoire de base de données
-      mkdir -p /opt/render/project/.database
-      touch /opt/render/project/.database/database.sqlite
-      
-      # Créer le répertoire build s'il n'existe pas
-      mkdir -p public/build
-      
-      # Configurer les permissions
-      chmod -R 775 storage bootstrap/cache public/build
-      chown -R www-data:www-data storage bootstrap/cache public/build
-      
-      # Configurer l'application
-      php artisan config:clear
-      php artisan cache:clear
-      php artisan view:clear
-      php artisan route:clear
-      
-      # Exécuter les migrations
-      php artisan migrate --force
-      
-      # Optimiser l'application
-      php artisan config:cache
-      php artisan route:cache
-      php artisan view:cache
-      php artisan optimize
-    
-    startCommand: >
-      php artisan config:clear &&
-      php artisan cache:clear &&
-      php artisan view:clear &&
-      php artisan serve --host=0.0.0.0 --port=$PORT --env=production
-      
+      docker build -t nasa-bioscience .
+    startCommand: docker run -p 10000:10000 nasa-bioscience
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: true
-      - key: VITE_APP_NAME
-        value: "NASA Bioscience"
+        value: "false"
       - key: VITE_APP_URL
         value: https://${RENDER_EXTERNAL_HOSTNAME}
