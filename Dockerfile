@@ -1,15 +1,18 @@
-FROM php:8.2-cli
+FROM php:8.2-fpm
 
 # Installer les extensions nécessaires
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get update && apt-get install -y \
+    nginx \
+    supervisor \
     sqlite3 \
     libsqlite3-dev \
     unzip \
     git \
     nodejs \
+    npm \
     && docker-php-ext-install pdo pdo_sqlite \
-    && apt-get clean
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -19,11 +22,18 @@ WORKDIR /var/www/html
 # Copier les fichiers
 COPY . .
 
-# Installer les dépendances
+# Installer les dépendances PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN npm install && \
-    npm run build
+# Installer les dépendances Node et construire les assets
+RUN npm ci && \
+    npm run build && \
+    npm cache clean --force
+
+# Configurer les permissions
+RUN chown -R www-data:www-data /var/www/html/storage \
+    /var/www/html/bootstrap/cache \
+    /var/www/html/public/build
 
 # Créer le répertoire pour SQLite
 RUN mkdir -p /var/www/html/database && \

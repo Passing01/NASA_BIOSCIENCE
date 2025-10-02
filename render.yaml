@@ -1,28 +1,44 @@
 services:
   - type: web
-    name: mon-app-laravel
+    name: nasa-bioscience
     env: php
     buildCommand: |
-      composer install --no-dev --optimize-autoloader
-      npm install
+      # Installer les dépendances PHP
+      composer install --no-dev --optimize-autoloader --no-interaction
+      
+      # Installer les dépendances Node et construire les assets
+      npm ci
       npm run build
+      
+      # Créer le répertoire de base de données
       mkdir -p /opt/render/project/.database
       touch /opt/render/project/.database/database.sqlite
+      
+      # Configurer les permissions
+      chmod -R 775 storage bootstrap/cache
+      
+      # Configurer l'application
+      php artisan config:clear
+      php artisan cache:clear
+      php artisan view:clear
+      php artisan route:clear
+      
+      # Exécuter les migrations
       php artisan migrate --force
+      
+      # Optimiser l'application
       php artisan config:cache
       php artisan route:cache
       php artisan view:cache
       php artisan optimize
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    
+    startCommand: >
+      php artisan config:clear &&
+      php artisan cache:clear &&
+      php artisan view:clear &&
+      php artisan serve --host=0.0.0.0 --port=$PORT --env=production
+      
     envVars:
-      - key: APP_KEY
-        generateValue: true
-      - key: APP_ENV
-        value: production
-      - key: DB_CONNECTION
-        value: sqlite
-      - key: DB_DATABASE
-        value: /database/database.sqlite
       - key: APP_ENV
         value: production
       - key: APP_DEBUG

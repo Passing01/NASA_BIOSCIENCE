@@ -9,8 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.jsx'],
+            input: 'resources/js/app.jsx',
             refresh: true,
+            buildDirectory: 'build',
         }),
         react({
             // Configuration de base pour React
