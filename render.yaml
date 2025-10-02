@@ -4,7 +4,7 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     buildCommand: |
-      docker build --no-cache -t nasa-bioscience .
+      docker build -t nasa-bioscience .
     startCommand: |
       # Vérifier si le dossier build existe, sinon le créer
       if [ ! -d "public/build" ]; then
@@ -14,14 +14,23 @@ services:
       docker run -p 10000:10000 \
         -e APP_ENV=production \
         -e APP_DEBUG=false \
+        -e APP_URL=https://${RENDER_EXTERNAL_HOSTNAME} \
         -e VITE_APP_URL=https://${RENDER_EXTERNAL_HOSTNAME} \
+        -e MIX_ASSET_URL=https://${RENDER_EXTERNAL_HOSTNAME} \
+        -e FORCE_HTTPS=true \
         nasa-bioscience
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: "false"
+      - key: APP_URL
+        value: https://${RENDER_EXTERNAL_HOSTNAME}
       - key: VITE_APP_URL
+        value: https://${RENDER_EXTERNAL_HOSTNAME}
+      - key: MIX_ASSET_URL
         value: https://${RENDER_EXTERNAL_HOSTNAME}
       - key: NODE_ENV
         value: production
+      - key: FORCE_HTTPS
+        value: "true"
