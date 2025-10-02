@@ -1,12 +1,15 @@
 FROM php:8.2-cli
 
 # Installer les extensions nécessaires
-RUN apt-get update && apt-get install -y \
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y \
     sqlite3 \
     libsqlite3-dev \
     unzip \
     git \
-    && docker-php-ext-install pdo pdo_sqlite
+    nodejs \
+    && docker-php-ext-install pdo pdo_sqlite \
+    && apt-get clean
 
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -28,6 +31,10 @@ RUN mkdir -p /var/www/html/database && \
 RUN mkdir -p storage/framework/{sessions,views,cache} && \
     mkdir -p storage/logs && \
     chmod -R 775 storage bootstrap/cache
+
+RUN touch database/database.sqlite
+
+RUN chmod -R 777 storage bootstrap/cache database
 
 EXPOSE 10000
 
