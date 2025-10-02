@@ -3,11 +3,26 @@ services:
     name: nasa-bioscience
     env: php
     buildCommand: |
+      # Mettre à jour et installer les dépendances système
+      apt-get update && apt-get install -y \
+        curl \
+        gnupg \
+        ca-certificates \
+        sqlite3 \
+        unzip \
+        git
+      
+      # Installer Node.js 20.x
+      mkdir -p /etc/apt/keyrings
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+      apt-get update && apt-get install -y nodejs
+      
       # Installer les dépendances PHP
       composer install --no-dev --optimize-autoloader --no-interaction
       
       # Installer les dépendances Node et construire les assets
-      npm ci
+      npm ci --prefer-offline --no-audit --progress=false
       npm run build
       
       # Créer le répertoire de base de données
@@ -15,7 +30,7 @@ services:
       touch /opt/render/project/.database/database.sqlite
       
       # Configurer les permissions
-      chmod -R 775 storage bootstrap/cache
+      chmod -R 775 storage bootstrap/cache public/build
       
       # Configurer l'application
       php artisan config:clear
