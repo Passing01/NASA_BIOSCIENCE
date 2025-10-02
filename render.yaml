@@ -4,8 +4,18 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     buildCommand: |
-      docker build -t nasa-bioscience .
-    startCommand: docker run -p 10000:10000 nasa-bioscience
+      docker build --no-cache -t nasa-bioscience .
+    startCommand: |
+      # Vérifier si le dossier build existe, sinon le créer
+      if [ ! -d "public/build" ]; then
+        mkdir -p public/build
+      fi
+      # Démarrer le conteneur
+      docker run -p 10000:10000 \
+        -e APP_ENV=production \
+        -e APP_DEBUG=false \
+        -e VITE_APP_URL=https://${RENDER_EXTERNAL_HOSTNAME} \
+        nasa-bioscience
     envVars:
       - key: APP_ENV
         value: production
@@ -13,3 +23,5 @@ services:
         value: "false"
       - key: VITE_APP_URL
         value: https://${RENDER_EXTERNAL_HOSTNAME}
+      - key: NODE_ENV
+        value: production

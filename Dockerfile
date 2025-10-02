@@ -24,26 +24,39 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copier les fichiers
+# Copier d'abord uniquement les fichiers nécessaires pour l'installation des dépendances
+COPY package*.json ./
+COPY composer.* ./
+
+# Installer les dépendances PHP
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Installer les dépendances Node
+RUN npm ci --prefer-offline --no-audit --progress=false
+
+# Copier le reste des fichiers
 COPY . .
 
-# Installer les dépendances
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && npm ci --prefer-offline --no-audit --progress=false \
-    && npm run build
+# Construire les assets
+RUN npm run build
 
 # Configurer Nginx
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Configurer les permissions
-RUN chown -R www-data:www-data /var/www/html/storage \
+# Créer les répertoires nécessaires et configurer les permissions
+RUN mkdir -p /var/www/html/storage/framework/{sessions,views,cache} \
+    && mkdir -p /var/www/html/storage/logs \
+    && touch /var/www/html/database/database.sqlite \
+    && chown -R www-data:www-data /var/www/html/storage \
     /var/www/html/bootstrap/cache \
-    /var/www/html/public/build
-
-# Créer le fichier SQLite
-RUN touch database/database.sqlite \
-    && chmod 775 database/database.sqlite
+    /var/www/html/public/build \
+    /var/www/html/database/database.sqlite \
+    && chmod -R 775 /var/www/html/storage \
+    /var/www/html/bootstrap/cache \
+    /var/www/html/public/build \
+    /var/www/html/database/database.sqlite \
+    && php artisan storage:link
 
 # Exposer le port
 EXPOSE 10000
