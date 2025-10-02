@@ -16,7 +16,7 @@ export default function AIChat({ selectedResourceId }) {
             setMessages([{
                 id: Date.now(),
                 role: 'assistant',
-                content: "Bonjour ! Je suis votre assistant IA pour NASA Bioscience. Posez vos questions en lien direct avec une ressource sélectionnée."
+                content: "Hello! I'm your AI assistant for NASA Bioscience. Ask me anything about the resources available."
             }]);
         }
     }, [selectedResourceId]); // Ne pas inclure messages dans les dépendances pour éviter les boucles infinies
@@ -32,13 +32,13 @@ export default function AIChat({ selectedResourceId }) {
 
     const loadResourceContent = async (resourceId) => {
         if (!resourceId) {
-            console.error('Aucun ID de ressource fourni');
+            console.error('No resource ID provided');
             return;
         }
         
         try {
             setIsLoading(true);
-            console.log(`Chargement de la ressource avec l'ID: ${resourceId}`);
+            console.log(`Loading resource with ID: ${resourceId}`);
             
             const response = await axios.get(`/api/resources/${resourceId}/content`);
             
@@ -118,7 +118,7 @@ export default function AIChat({ selectedResourceId }) {
                 }));
 
             // Call the API to get a response
-            console.log('Envoi du message avec les données :', {
+            console.log('Sending message with data :', {
                 message: userMessage.content,
                 context,
                 resourceId: selectedResourceId ? parseInt(selectedResourceId) : null
@@ -135,7 +135,7 @@ export default function AIChat({ selectedResourceId }) {
                     content: '',
                 }]);
 
-                console.log('Envoi de la requête de streaming...');
+                console.log('Sending streaming request...');
                 const resp = await fetch('/api/ai/chat/stream', {
                     method: 'POST',
                     headers: {
@@ -151,12 +151,12 @@ export default function AIChat({ selectedResourceId }) {
                     })
                 });
 
-                console.log('Réponse reçue, statut:', resp.status);
-                console.log('En-têtes de la réponse:', Object.fromEntries(resp.headers.entries()));
+                console.log('Response received, status:', resp.status);
+                console.log('Response headers:', Object.fromEntries(resp.headers.entries()));
 
                 if (!resp.ok) {
                     const errorText = await resp.text();
-                    console.error('Erreur de réponse:', resp.status, errorText);
+                    console.error('Response error:', resp.status, errorText);
                     throw new Error(`Erreur HTTP ${resp.status}: ${errorText}`);
                 }
 
@@ -170,7 +170,7 @@ export default function AIChat({ selectedResourceId }) {
                 let done = false;
                 let fullResponse = '';
 
-                console.log('Début de la lecture du flux SSE...');
+                console.log('Start reading SSE stream...');
                 
                 try {
                     while (!done) {
@@ -329,7 +329,7 @@ export default function AIChat({ selectedResourceId }) {
     return (
         <div className="chat-container">
             <div className="chat-header">
-                Assistant IA pour NASA Bioscience
+                AI Assistant for NASA Bioscience
             </div>
             
             <div className="chat-messages">
@@ -389,7 +389,7 @@ export default function AIChat({ selectedResourceId }) {
                         type="text"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Posez votre question liée à la ressource..."
+                        placeholder="Ask a question related to the resource..."
                         className="chat-input"
                         disabled={isLoading}
                     />
@@ -398,7 +398,7 @@ export default function AIChat({ selectedResourceId }) {
                         disabled={!message.trim() || isLoading}
                         className="send-button"
                     >
-                        Envoyer
+                        Send
                     </button>
                 </form>
             </div>

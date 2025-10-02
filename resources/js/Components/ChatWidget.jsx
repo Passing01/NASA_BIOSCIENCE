@@ -9,7 +9,7 @@ const ChatWidget = () => {
     const [messages, setMessages] = useState([
         {
             id: 1,
-            text: "Bonjour ! Je suis votre assistant IA pour NASA Bioscience. Je réponds uniquement aux questions liées à une ressource sélectionnée.",
+            text: "Hello! I'm your AI assistant for NASA Bioscience. I respond only to questions related to a selected resource.",
             sender: 'bot',
             timestamp: new Date()
         }
@@ -58,14 +58,14 @@ const ChatWidget = () => {
 
             setMessages(prev => [...prev, botMessage]);
         } catch (error) {
-            console.error('Erreur lors de l\'envoi du message :', error);
+            console.error('Error sending message :', error);
             
-            let errorText = 'Désolé, une erreur est survenue lors du traitement de votre demande. Veuillez réessayer plus tard.';
+            let errorText = 'Sorry, an error occurred while processing your request. Please try again later.';
             
             // Handle rate limit errors
             if (error.response) {
                 if (error.response.status === 429) {
-                    errorText = 'Vous avez dépassé la limite de requêtes. Veuillez patienter avant de réessayer.';
+                    errorText = 'You have exceeded the request limit. Please wait before trying again.';
                 } else if (error.response.data?.message) {
                     errorText = error.response.data.message;
                 }
@@ -96,7 +96,7 @@ const ChatWidget = () => {
                     <Card.Header className="d-flex justify-content-between align-items-center bg-primary text-white">
                         <div className="d-flex align-items-center">
                             <Robot className="me-2" />
-                            <span>Assistant IA pour NASA</span>
+                            <span>AI Assistant for NASA</span>
                         </div>
                         <Button 
                             variant="link" 
@@ -136,7 +136,7 @@ const ChatWidget = () => {
                                     <ListGroup.Item className="border-0 p-2 text-start">
                                         <div className="d-flex align-items-center">
                                             <Spinner animation="border" size="sm" className="me-2" />
-                                            <span>L'IA réfléchit...</span>
+                                            <span>The AI is thinking...</span>
                                         </div>
                                     </ListGroup.Item>
                                 )}
@@ -149,7 +149,7 @@ const ChatWidget = () => {
                                     type="text"
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Tapez votre message... (Les réponses ne sont fournies que pour des questions liées aux ressources)"
+                                    placeholder="Type your message... (Responses are provided only for questions related to resources)"
                                     className="rounded-start"
                                     disabled={isLoading}
                                 />
