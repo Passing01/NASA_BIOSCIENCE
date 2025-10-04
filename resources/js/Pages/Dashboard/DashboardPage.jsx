@@ -23,110 +23,80 @@ import {
     Search as SearchIcon
 } from 'react-bootstrap-icons';
 
-// Les données sont maintenant chargées depuis l'API: /api/ai/resources-enriched
-
 // Composant de filtre
 const FilterSection = ({ filters, onFilterChange, years = [], organizations = [], types = [], statuses = [] }) => {
     return (
         <Card className="mb-4">
             <Card.Body>
-                <h5 className="mb-3" style={{ color: '#fff' }}>Filter resources</h5>
+                <h5 className="mb-3" style={{ color: '#fff' }}>Filtrer les ressources</h5>
                 <Row>
-                    <Col md={3} className="mb-3" style={{ color: '#fff' }}>
+                    <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Year</Form.Label>
+                            <Form.Label>Année</Form.Label>
                             <Form.Select 
                                 value={filters.year} 
                                 onChange={(e) => onFilterChange('year', e.target.value)}
                             >
-                                <option value="">All years</option>
+                                <option value="">Toutes les années</option>
                                 {years.map(y => (
                                     <option key={y} value={y}>{y}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
                     </Col>
-                    <Col md={3} className="mb-3" style={{ color: '#fff' }}>
+                    <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Organization</Form.Label>
+                            <Form.Label>Organisation</Form.Label>
                             <Form.Select 
                                 value={filters.organization}
                                 onChange={(e) => onFilterChange('organization', e.target.value)}
                             >
-                                <option value="">All organizations</option>
-                                {organizations.map(o => (
-                                    <option key={o} value={o}>{o}</option>
+                                <option value="">Toutes les organisations</option>
+                                {organizations.map(org => (
+                                    <option key={org} value={org}>{org}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
                     </Col>
-                    <Col md={3} className="mb-3" style={{ color: '#fff' }}>
+                    <Col md={3} className="mb-3">
                         <Form.Group>
                             <Form.Label>Type</Form.Label>
                             <Form.Select 
-                                value={filters.type} 
+                                value={filters.type}
                                 onChange={(e) => onFilterChange('type', e.target.value)}
                             >
-                                <option value="">All types</option>
-                                {types.map(t => (
-                                    <option key={t} value={t}>{t}</option>
+                                <option value="">Tous les types</option>
+                                {types.map(type => (
+                                    <option key={type} value={type}>{type}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
                     </Col>
-                    <Col md={3} className="mb-3" style={{ color: '#fff' }}>
+                    <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Status</Form.Label>
+                            <Form.Label>Statut</Form.Label>
                             <Form.Select 
-                                value={filters.status} 
+                                value={filters.status}
                                 onChange={(e) => onFilterChange('status', e.target.value)}
                             >
-                                <option value="">All status</option>
-                                {statuses.map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                <option value="">Tous les statuts</option>
+                                {statuses.map(status => (
+                                    <option key={status} value={status}>{status}</option>
                                 ))}
                             </Form.Select>
-                        </Form.Group>
-                    </Col>
-                    <Col md={12} className="mb-3" style={{ color: '#fff' }}>
-                        <Form.Group>
-                            <Form.Label>Quick search</Form.Label>
-                            <div className="input-group">
-                                <span className="input-group-text">
-                                    <SearchIcon />
-                                </span>
-                                <Form.Control 
-                                    type="text" 
-                                    placeholder="Search by title or mission..." 
-                                    value={filters.search}
-                                    onChange={(e) => onFilterChange('search', e.target.value)}
-                                />
-                            </div>
                         </Form.Group>
                     </Col>
                 </Row>
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                    {(filters.mission || filters.year || filters.organization || filters.status || filters.type || filters.search) && (
-                        <Button 
-                            variant="outline-secondary" 
-                            size="sm"
-                            onClick={() => onFilterChange('reset', '')}
-                            className="ms-auto"
-                        >
-                            Reset filters
-                        </Button>
-                    )}
-                </div>
             </Card.Body>
         </Card>
     );
 };
 
-// Les props sont maintenant passées par le contrôleur Laravel
+// Composant principal
 export default function DashboardPage({ resources: initialResources = [] }) {
+    const [selectedExperience, setSelectedExperience] = useState(null);
     const [resources, setResources] = useState(initialResources);
     const [loading, setLoading] = useState(false);
-    const [selectedResource, setSelectedResource] = useState(null);
     const [filters, setFilters] = useState({
         year: '',
         organization: '',
@@ -142,22 +112,18 @@ export default function DashboardPage({ resources: initialResources = [] }) {
             try {
                 const response = await fetch('/api/resources');
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`Erreur HTTP! statut: ${response.status}`);
                 }
                 const data = await response.json();
                 
                 // Ajouter des métadonnées pour le filtrage
                 const enhancedResources = data.map(resource => ({
                     ...resource,
-                    // Extraire l'année de l'URL ou du titre
                     year: (resource.url?.match(/\/(\d{4})\//) || resource.title?.match(/(20\d{2})/) || [])[1] || 
                           new Date().getFullYear().toString(),
-                    // Définir une organisation par défaut (NASA) ou extraire d'autres sources si disponibles
                     organization: 'NASA',
-                    // Définir un type par défaut
-                    type: 'Research Paper',
-                    // Définir un statut par défaut
-                    status: 'Published'
+                    type: 'Document de recherche',
+                    status: 'Publié'
                 }));
                 setResources(enhancedResources);
             } catch (error) {
@@ -171,17 +137,10 @@ export default function DashboardPage({ resources: initialResources = [] }) {
         loadResources();
     }, [initialResources]);
     
-    // Fonction pour gérer la sélection d'une ressource
-    const handleResourceSelect = useCallback((resource) => {
-        console.log('Selected resource:', resource);
-        setSelectedResource(resource);
-    }, []);
-    
-    // Fonction pour gérer les changements de filtre
+    // Gérer les changements de filtre
     const handleFilterChange = (filterName, value) => {
         if (filterName === 'reset') {
             setFilters({
-                mission: '',
                 year: '',
                 organization: '',
                 status: '',
@@ -196,176 +155,113 @@ export default function DashboardPage({ resources: initialResources = [] }) {
         }
     };
     
-    // Options dynamiques
+    // Options dynamiques pour les filtres
     const years = useMemo(() => 
-        Array.from(new Set(
-            resources
-                .map(r => r.year)
-                .filter(Boolean)
-                .sort((a, b) => b - a) // Tri décroissant pour avoir les années les plus récentes d'abord
-        )), 
+        [...new Set(resources.map(r => r.year).filter(Boolean))].sort((a, b) => b - a),
         [resources]
     );
-
+    
     const organizations = useMemo(() => 
-        Array.from(new Set(
-            resources
-                .map(r => r.organization)
-                .filter(Boolean)
-                .sort()
-        )), 
+        [...new Set(resources.map(r => r.organization).filter(Boolean))].sort(),
         [resources]
     );
-
+    
     const types = useMemo(() => 
-        Array.from(new Set(
-            resources
-                .map(r => r.type)
-                .filter(Boolean)
-                .sort()
-        )), 
+        [...new Set(resources.map(r => r.type).filter(Boolean))].sort(),
         [resources]
     );
-
+    
     const statuses = useMemo(() => 
-        Array.from(new Set(
-            resources
-                .map(r => r.status)
-                .filter(Boolean)
-                .sort()
-        )), 
+        [...new Set(resources.map(r => r.status).filter(Boolean))].sort(),
         [resources]
     );
-
-    // Filtrer les ressources en fonction des filtres
-    const filteredResources = useMemo(() => 
-        resources.filter(resource => {
-            const matchesYear = !filters.year || (resource.year.toString() === filters.year);
-            const matchesOrg = !filters.organization || 
-                (resource.organization && resource.organization.toLowerCase().includes(filters.organization.toLowerCase()));
-            const matchesStatus = !filters.status || 
-                (resource.status && resource.status.toLowerCase() === filters.status.toLowerCase());
-            const matchesType = !filters.type || 
-                (resource.type && resource.type.toLowerCase() === filters.type.toLowerCase());
-            const matchesSearch = !filters.search || 
-                (resource.title && resource.title.toLowerCase().includes(filters.search.toLowerCase()));
-            
-            return matchesYear && matchesOrg && matchesStatus && matchesType && matchesSearch;
-        }),
-        [resources, filters]
-    );
-
-    // État pour gérer le nombre de ressources à afficher
-    const [displayCount, setDisplayCount] = useState(3);
+    
+    // État pour la pagination
+    const [displayCount, setDisplayCount] = useState(6);
     const showMore = () => {
-        setDisplayCount(prev => prev + 3);
+        setDisplayCount(prev => prev + 6);
     };
     
-    // Réinitialiser le compteur quand les filtres changent
+    // Réinitialiser la pagination quand les filtres changent
     useEffect(() => {
-        setDisplayCount(3);
+        setDisplayCount(6);
     }, [filters]);
 
     return (
         <AppLayout>
-            <Head title="Dashboard" />
+            <Head title="Tableau de bord" />
             
-            <div className="dashboard-container">
-                {/* Barre latérale du chat */}
-                <div className="chat-sidebar">
-                    <AIChat selectedResourceId={selectedResource?.id} />
-                </div>
+            <div className="container-fluid p-0 h-100">
+                <div className="row g-0 h-100">
+                    {/* Colonne de chat fixe à gauche */}
+                    <div className="col-md-3 h-100 bg-dark text-white p-3" style={{
+                        position: 'fixed',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        overflowY: 'auto',
+                        zIndex: 1000
+                    }}>
+                        <AIChat 
+                            selectedResourceId={selectedExperience?.id}
+                            selectedResource={selectedExperience}
+                            onDeselectResource={() => setSelectedExperience(null)}
+                        />
+                    </div>
 
-                {/* Contenu principal */}
-                <div className="main-content">
-                    {/* En-tête */}
-                    <header className="dashboard-header">
-                        <div className="d-flex justify-content-between align-items-center">
-                            {/* <img src="images/nasa-logo.jpg" alt="NASA Logo" /> */}
-                            <h1 className="h4 mb-0">BIOASTRA</h1>
-                            <div className="d-flex align-items-center gap-3">
-                                {/* <div className="search-box">
-                                    <SearchIcon className="search-icon" />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Rechercher..." 
-                                        className="form-control"
-                                        value={filters.search}
-                                        onChange={(e) => handleFilterChange('search', e.target.value)}
-                                    />
-                                </div> */}
-                                {/* <button 
-                                    className="btn btn-icon position-relative"
-                                    onClick={() => console.log('Ouvrir les notifications')}
-                                >
-                                    <Bell size={20} />
-                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                        3
-                                        <span className="visually-hidden">nouvelles notifications</span>
-                                    </span>
-                                </button>
-                                <button 
-                                    className="btn btn-icon"
-                                    onClick={() => console.log('Ouvrir l\'aide')}
-                                >
-                                    <QuestionCircle size={20} />
-                                </button> */}
-                                {/* <Dropdown>
-                                    <Dropdown.Toggle 
-                                        variant="link" 
-                                        className="btn-icon p-0"
-                                        id="user-menu"
-                                    >
-                                        <Gear size={20} />
-                                    </Dropdown.Toggle>
-                                    <Dropdown.Menu align="end">
-                                        <Dropdown.Item 
-                                            onClick={() => console.log('Ouvrir les paramètres')}
-                                        >
-                                            Paramètres
-                                        </Dropdown.Item>
-                                        <Dropdown.Item
-                                            onClick={() => console.log('Ouvrir mon compte')}
-                                        >
-                                            Mon compte
-                                        </Dropdown.Item>
-                                        <Dropdown.Divider />
-                                        <Dropdown.Item
-                                            onClick={() => {
-                                                if (window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-                                                    console.log('Déconnexion'); */}
-                                                    
-                                                {/* }
-                                            }}
-                                        >
-                                            Déconnexion
-                                        </Dropdown.Item>
-                                    </Dropdown.Menu>
-                                </Dropdown> */}
+                    {/* Colonne de contenu principale */}
+                    <div className="col-md-9 offset-md-3">
+                        <div className="main-content">
+                            {/* En-tête */}
+                            <header className="dashboard-header p-3 border-bottom" style={{ backgroundColor: '#1e3a5f' }}>
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <h1 className="h4 mb-0">BIOASTRA</h1>
+                                    {/* <div className="d-flex align-items-center gap-3">
+                                        <Button variant="outline-secondary" size="sm">
+                                            <Bell size={18} />
+                                        </Button>
+                                        <Button variant="outline-secondary" size="sm">
+                                            <QuestionCircle size={18} />
+                                        </Button>
+                                        <Dropdown>
+                                            <Dropdown.Toggle 
+                                                variant="outline-secondary" 
+                                                size="sm"
+                                                id="user-menu"
+                                            >
+                                                <Gear size={18} />
+                                            </Dropdown.Toggle>
+                                            <Dropdown.Menu align="end">
+                                                <Dropdown.Item>Paramètres</Dropdown.Item>
+                                                <Dropdown.Item>Mon compte</Dropdown.Item>
+                                                <Dropdown.Divider />
+                                                <Dropdown.Item>Déconnexion</Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown>
+                                    </div> */}
                                 </div>
+                            </header>
+
+                            <div className="dashboard-content p-4">
+                                <FilterSection 
+                                    filters={filters} 
+                                    onFilterChange={handleFilterChange}
+                                    years={years}
+                                    organizations={organizations}
+                                    types={types}
+                                    statuses={statuses}
+                                />
+
+                                <ExperiencesSection 
+                                    searchTerm={filters.search}
+                                    yearFilter={filters.year}
+                                    organizationFilter={filters.organization}
+                                    statusFilter={filters.status}
+                                    typeFilter={filters.type}
+                                    onSelectExperience={(exp) => setSelectedExperience(exp)}
+                                />
                             </div>
-                        </header>
-
-                    <div className="content-wrapper">
-                        {/* Section Expériences avec filtres */}
-                        <section className="mb-4">
-                            <FilterSection 
-                                filters={filters} 
-                                onFilterChange={handleFilterChange}
-                                years={years}
-                                organizations={organizations}
-                                types={types}
-                                statuses={statuses}
-                            />
-
-                            <ExperiencesSection 
-                                searchTerm={filters.search}
-                                yearFilter={filters.year}
-                                organizationFilter={filters.organization}
-                                statusFilter={filters.status}
-                                typeFilter={filters.type}
-                            />
-                        </section>
+                        </div>
                     </div>
                 </div>
             </div>

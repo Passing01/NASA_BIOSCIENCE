@@ -19,7 +19,8 @@ export default function ExperiencesSection({
     yearFilter = '', 
     organizationFilter = '', 
     statusFilter = '', 
-    typeFilter = '' 
+    typeFilter = '',
+    onSelectExperience = null
 }) {
     const [experiments, setExperiments] = useState([]);
     const [filteredExperiments, setFilteredExperiments] = useState([]);
@@ -255,7 +256,13 @@ export default function ExperiencesSection({
                         <tbody>
                             {!isLoading && !error && filteredExperiments.map(experiment => (
                                 <tr key={experiment.id}>
-                                    <td className="fw-medium" style={{ color: '#fff' }}>{experiment.name}</td>
+                                    <td 
+                                        className="fw-medium" 
+                                        style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}
+                                        onClick={() => onSelectExperience && onSelectExperience(experiment)}
+                                    >
+                                        {experiment.name}
+                                    </td>
                                     <td className="text-muted" style={{ color: '#fff' }}>
                                         {experiment.startDate || '—'} - {experiment.endDate || '—'}
                                     </td>

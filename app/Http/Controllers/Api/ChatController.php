@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\OpenAIService;
 use App\Services\ChatCacheService;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,54 +26,73 @@ class ChatController extends Controller
      * Envoyer un message à l'IA et obtenir une réponse
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
      */
     public function sendMessage(Request $request)
     {
         try {
-            $request->validate([
-                'message' => 'required|string|max:1000',
+            $validated = $request->validate([
+                'message' => 'required|string',
                 'language' => 'sometimes|string|in:en,fr',
-                'context' => 'sometimes|array',
-                'resourceId' => 'sometimes|integer|exists:resources,id'
+                'resourceId' => [
+                    'nullable',
+                    'integer',
+                    function ($attribute, $value, $fail) {
+                        if ($value) {
+                            $resourcesJson = File::get(resource_path('data/resources.json'));
+                            $resources = json_decode($resourcesJson, true);
+                            $resourceExists = collect($resources)->contains('id', $value);
+                            
+                            if (!$resourceExists) {
+                                $fail('La ressource sélectionnée n\'existe pas.');
+                            }
+                        }
+                    }
+                ],
+                'context' => 'sometimes|array'
             ]);
 
-            $message = trim($request->message);
-            $language = $request->input('language', 'en'); // Par défaut en anglais
-            
-            if (empty($message)) {
-                $errorMessage = $language === 'fr' 
-                    ? 'Le message ne peut pas être vide.'
-                    : 'Message cannot be empty.';
-                    
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage
-                ], 400);
+            $message = $request->input('message');
+            $language = $request->input('language', 'en');
+            $resourceId = $request->input('resourceId');
+            $context = $request->input('context', []);
+
+            // Si une ressource est fournie, on l'ajoute au contexte
+            if ($resourceId) {
+                $resourcesJson = File::get(resource_path('data/resources.json'));
+                $resources = json_decode($resourcesJson, true);
+                
+                // Trouver la ressource par son ID
+                $resource = collect($resources)->firstWhere('id', $resourceId);
+                
+                if ($resource) {
+                    $context['resource'] = [
+                        'id' => $resource['id'],
+                        'title' => $resource['name'] ?? $resource['title'] ?? 'Sans titre',
+                        'content' => $resource['content'] ?? $resource['description'] ?? ''
+                    ];
+                }
             }
-            
-            // Vérifier d'abord le cache (inclure la langue dans la clé de cache)
-            $cacheKey = $language . '_' . md5($message);
+
+            // Vérifier si la réponse est en cache
+            $cacheKey = 'chat_' . md5($message . ($resourceId ?? '') . $language);
             $cachedResponse = $this->cacheService->getCachedResponse($cacheKey);
-            if ($cachedResponse !== null) {
+            
+            if ($cachedResponse) {
                 return response()->json([
                     'success' => true,
-                    'response' => $cachedResponse,
+                    'message' => $cachedResponse,
+                    'cached' => true,
                     'timestamp' => now()->toDateTimeString()
                 ]);
             }
 
-            // Vérifier si c'est une question fréquente
-            // Si pas dans le cache, appeler le service OpenAI avec la langue
-            $context = $request->input('context', []);
-            $resourceId = $request->input('resourceId');
-            
-            // Ajouter la langue au contexte
+            // Appeler le service d'IA avec ou sans ressource
             $context['user_language'] = $language;
             
             $response = $this->openAIService->getResponse(
-                $message, 
-                $context, 
+                $message,
+                $context,
+                false, // fastMode
                 $resourceId
             );
 
@@ -81,14 +102,11 @@ class ChatController extends Controller
             }
 
             // Mettre en cache la réponse avec la clé incluant la langue
-            $this->cacheService->cacheResponse($cacheKey, [
-                'message' => $response['message'] ?? '',
-                'context' => $response['context'] ?? []
-            ]);
+            $this->cacheService->cacheResponse($cacheKey, $response);
 
             return response()->json([
                 'success' => true,
-                'response' => $response,
+                'message' => $response,
                 'cached' => false,
                 'timestamp' => now()->toDateTimeString()
             ]);

@@ -140,7 +140,27 @@ class OpenAIController extends Controller
 
     public function getResourceContent($id)
     {
-        return response()->json($this->openAIService->getResourceContent($id));
+        try {
+            $resource = $this->openAIService->getResourceContent($id);
+            
+            if (!$resource) {
+                return response()->json([
+                    'error' => 'Resource not found',
+                    'message' => 'The requested resource was not found.'
+                ], 404);
+            }
+            
+            return response()->json([
+                'data' => $resource
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in getResourceContent: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Internal Server Error',
+                'message' => 'An error occurred while processing your request.'
+            ], 500);
+        }
     }
 
     /**

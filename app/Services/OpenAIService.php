@@ -640,6 +640,14 @@ class OpenAIService
     {
         // Utiliser le modèle Gemini défini
         $model = $this->geminiModel;
+        
+        // Log de débogage
+        Log::info('Début de getResponse', [
+            'model' => $model,
+            'has_api_key' => !empty($this->geminiApiKey),
+            'resource_id' => $resourceId,
+            'context_count' => count($context)
+        ]);
 
         // Étendre le temps d'exécution PHP pour laisser le modèle répondre
         if (function_exists('set_time_limit')) {
