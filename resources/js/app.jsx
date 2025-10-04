@@ -6,7 +6,7 @@ import { InertiaProgress } from '@inertiajs/progress';
 
 // Configuration d'Inertia
 createInertiaApp({
-    title: (title) => title ? `${title} - NASA Bioscience` : 'NASA Bioscience',
+    title: (title) => title ? `${title} - BIOASTRA` : 'BIOASTRA',
     resolve: (name) => {
         const pages = import.meta.glob('./Pages/**/*.jsx', { eager: true });
         const page = pages[`./Pages/${name}.jsx`];
