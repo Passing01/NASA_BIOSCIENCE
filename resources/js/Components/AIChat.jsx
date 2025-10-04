@@ -2,15 +2,57 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { FaUser, FaRobot, FaTimes, FaPaperPlane } from 'react-icons/fa';
 import { format } from 'date-fns';
-import { fr, enUS } from 'date-fns/locale';
+import { fr, enUS, es, zhCN, ja, ar } from 'date-fns/locale';
 
+// Fonction utilitaire pour obtenir l'emoji du drapeau
+const getFlagEmoji = (countryCode) => {
+    // Pour les codes de pays à deux lettres
+    try {
+        const codePoints = countryCode
+            .toUpperCase()
+            .split('')
+            .map(char => 127397 + char.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+    } catch (e) {
+        return ''; // Retourne une chaîne vide en cas d'erreur
+    }
+};
+
+// Gestion du clic en dehors du menu déroulant
+const useClickOutside = (ref, callback) => {
+    useEffect(() => {
+        const handleClick = (event) => {
+            if (ref.current && !ref.current.contains(event.target)) {
+                callback();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClick);
+        return () => {
+            document.removeEventListener('mousedown', handleClick);
+        };
+    }, [ref, callback]);
+};
+
+// Composant AIChat
 export default function AIChat({ selectedResourceId, selectedResource, onDeselectResource = () => {} }) {
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [language, setLanguage] = useState('en'); // 'en' ou 'fr'
+    // Configuration des langues supportées
+    const supportedLanguages = {
+        en: { name: 'English', locale: enUS },
+        fr: { name: 'Français', locale: fr },
+        es: { name: 'Español', locale: es },
+        zh: { name: '中文', locale: zhCN },
+        ja: { name: '日本語', locale: ja },
+        ar: { name: 'العربية', locale: ar, rtl: true }
+    };
+    
+    const [language, setLanguage] = useState('en');
     const messagesEndRef = useRef(null);
     const [isFirstMessage, setIsFirstMessage] = useState(true);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Charger les messages initiaux ou les suggestions
     useEffect(() => {
@@ -29,7 +71,7 @@ export default function AIChat({ selectedResourceId, selectedResource, onDeselec
             setMessages([{
                 id: Date.now(),
                 role: 'assistant',
-                content: "In which language would you like to communicate? (English/Français)",
+                content: "Please select your preferred language: " + Object.entries(supportedLanguages).map(([code, {name}]) => `${name} (${code})`).join(', '),
                 isLanguageSelection: true
             }]);
         }
@@ -141,12 +183,21 @@ export default function AIChat({ selectedResourceId, selectedResource, onDeselec
     // Gérer la sélection de la langue
     const handleLanguageSelect = (selectedLanguage) => {
         setLanguage(selectedLanguage);
+        setIsDropdownOpen(false);
+        
+        const welcomeMessages = {
+            en: 'Great! How can I assist you today?',
+            fr: 'Parfait ! En quoi puis-je vous aider aujourd\'hui ?',
+            es: '¡Perfecto! ¿En qué puedo ayudarte hoy?',
+            zh: '太好了！今天我能帮您什么忙？',
+            ja: 'よろしいですね！今日はどのようなお手伝いができますか？',
+            ar: 'رائع! كيف يمكنني مساعدتك اليوم؟'
+        };
+        
         setMessages([{
             id: Date.now(),
             role: 'assistant',
-            content: selectedLanguage === 'fr' 
-                ? 'Parfait ! En quoi puis-je vous aider aujourd\'hui ?' 
-                : 'Great! How can I assist you today?'
+            content: welcomeMessages[selectedLanguage] || welcomeMessages['en']
         }]);
         setIsFirstMessage(false);
     };
@@ -210,71 +261,223 @@ export default function AIChat({ selectedResourceId, selectedResource, onDeselec
     };
 
     return (
-        <div className="d-flex flex-column" style={{ 
+        <div className="d-flex flex-column h-100" style={{ 
             backgroundColor: '#1e3a5f',
-            height: '100vh',
+            width: '100%',
+            height: '100%',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
         }}>
             {/* En-tête du chat */}
-            <div className="chat-header d-flex justify-content-between align-items-center p-3 border-bottom bg-white shadow-sm">
+            <div className="chat-header d-flex justify-content-between align-items-center p-3 border-bottom shadow-sm" style={{
+                backgroundColor: '#1e3a5f',
+                color: '#fff'
+            }}>
                 <div className="d-flex align-items-center">
                     <FaRobot className="text-primary me-2" size={24} />
                     <h5 className="mb-0 fw-bold">ASTRAMIND</h5>
                 </div>
                 
-                {/* Sélecteur de langue */}
-                <div className="language-selector">
+                {/* Sélecteur de langue moderne avec état React */}
+                <div className="position-relative">
                     <button 
-                        className={`btn btn-sm ${language === 'fr' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                        onClick={() => handleLanguageSelect('fr')}
-                        disabled={isLoading}
+                        className="btn btn-sm btn-outline-secondary d-flex align-items-center"
+                        type="button"
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        style={{
+                            minWidth: '100px',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '0.25rem 0.75rem'
+                        }}
                     >
-                        FR
+                        <span className="me-2">
+                            {supportedLanguages[language]?.name || 'Language'}
+                        </span>
+                        <svg 
+                            width="12" 
+                            height="12" 
+                            fill="currentColor" 
+                            viewBox="0 0 16 16"
+                            style={{
+                                transition: 'transform 0.2s',
+                                transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0)'
+                            }}
+                        >
+                            <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                        </svg>
                     </button>
-                    <button 
-                        className={`btn btn-sm ms-2 ${language === 'en' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                        onClick={() => handleLanguageSelect('en')}
-                        disabled={isLoading}
-                    >
-                        EN
-                    </button>
+                    
+                    {isDropdownOpen && (
+                        <div 
+                            className="position-absolute end-0 mt-1 bg-white border rounded shadow-sm"
+                            style={{
+                                minWidth: '150px',
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                zIndex: 1000
+                            }}
+                        >
+                            <ul className="list-unstyled mb-0">
+                                {Object.entries(supportedLanguages).map(([code, {name}]) => (
+                                    <li key={code}>
+                                        <button
+                                            className={`w-100 text-start px-3 py-2 d-flex align-items-center ${language === code ? 'text-primary' : ''}`}
+                                            onClick={() => {
+                                                handleLanguageSelect(code);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            style={{
+                                                fontFamily: code === 'ar' ? 'Arial, sans-serif' : 'inherit',
+                                                direction: code === 'ar' ? 'rtl' : 'ltr',
+                                                textAlign: code === 'ar' ? 'right' : 'left',
+                                                whiteSpace: 'nowrap',
+                                                border: 'none',
+                                                background: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                        >
+                                            <span className="me-2">{getFlagEmoji(code)}</span>
+                                            {name}
+                                            {language === code && (
+                                                <span className="ms-auto">
+                                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/>
+                                                    </svg>
+                                                </span>
+                                            )}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
             
             {/* Zone des messages */}
             <div 
-                className="chat-messages p-3 overflow-auto" 
+                className="chat-messages p-3" 
                 style={{ 
                     backgroundColor: '#1e3a5f',
                     flex: '1 1 auto',
                     overflowY: 'auto',
+                    padding: '15px',
                     paddingBottom: '100px', // Espace pour le champ de saisie
-                    marginBottom: '80px' // Hauteur de la zone de saisie
+                    marginBottom: '80px', // Hauteur de la zone de saisie
+                    maxHeight: 'calc(100vh - 150px)'
                 }}
             >
                 {messages.map((msg) => (
                     <div 
                         key={msg.id} 
-                        className={`message ${msg.role} ${msg.isError ? 'error' : ''}`}
+                        className={`message-container ${msg.role === 'user' ? 'user-message-container' : 'assistant-message-container'}`}
+                        style={{
+                            display: 'flex',
+                            justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                            marginBottom: '15px',
+                            width: '100%'
+                        }}
                     >
-                        <div className="message-content">
-                            {msg.content}
-                            <span className="message-time">
-                                {formatTimestamp(msg.timestamp)}
-                            </span>
+                        <div 
+                            className={`message ${msg.role} ${msg.isError ? 'error' : ''}`}
+                            style={{
+                                maxWidth: '80%',
+                                padding: '12px 16px',
+                                borderRadius: '18px',
+                                position: 'relative',
+                                wordWrap: 'break-word',
+                                backgroundColor: msg.role === 'user' ? '#4a6fa5' : '#2a4a7a',
+                                color: 'white',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                marginLeft: msg.role === 'user' ? 'auto' : '0',
+                                marginRight: msg.role === 'user' ? '0' : 'auto',
+                                borderBottomRightRadius: msg.role === 'user' ? '4px' : '18px',
+                                borderBottomLeftRadius: msg.role === 'user' ? '18px' : '4px'
+                            }}
+                        >
+                            <div className="message-content" style={{ lineHeight: '1.5' }}>
+                                {msg.content}
+                                <span 
+                                    className="message-time" 
+                                    style={{
+                                        display: 'block',
+                                        fontSize: '0.7rem',
+                                        opacity: 0.8,
+                                        marginTop: '6px',
+                                        textAlign: 'right',
+                                        color: 'rgba(255,255,255,0.7)'
+                                    }}
+                                >
+                                    {formatTimestamp(msg.timestamp)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 ))}
                 
                 {isLoading && (
-                    <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                    <div className="typing-indicator" style={{
+                        display: 'flex',
+                        justifyContent: 'flex-start',
+                        margin: '10px 0',
+                        padding: '10px 15px',
+                        width: 'fit-content',
+                        backgroundColor: '#2a4a7a',
+                        borderRadius: '18px',
+                        borderBottomLeftRadius: '4px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            margin: '0 2px',
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            animation: 'bounce 1.4s infinite ease-in-out both',
+                            '&:nth-child(1)': { animationDelay: '-0.32s' },
+                            '&:nth-child(2)': { animationDelay: '-0.16s' }
+                        }}></span>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            margin: '0 2px',
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            animation: 'bounce 1.4s infinite ease-in-out both',
+                            '&:nth-child(1)': { animationDelay: '-0.32s' },
+                            '&:nth-child(2)': { animationDelay: '-0.16s' }
+                        }}></span>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            margin: '0 2px',
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            animation: 'bounce 1.4s infinite ease-in-out both',
+                            '&:nth-child(1)': { animationDelay: '-0.32s' },
+                            '&:nth-child(2)': { animationDelay: '-0.16s' }
+                        }}></span>
                     </div>
                 )}
             </div>
+            
+            <style>{
+                `@keyframes bounce {
+                    0%, 80%, 100% { 
+                        transform: scale(0);
+                    } 40% { 
+                        transform: scale(1.0);
+                    }
+                }`
+            }</style>
             
             {/* Zone de saisie en bas */}
             <div 

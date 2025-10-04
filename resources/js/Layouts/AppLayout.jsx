@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min';
 import axios from 'axios';
-import ChatWidget from '../Components/ChatWidget';
+// import ChatWidget from '../Components/ChatWidget';
 
 export default function AppLayout({ children, title }) {
     // Configurer les en-têtes par défaut pour axios
@@ -24,7 +24,7 @@ export default function AppLayout({ children, title }) {
                 <meta name="csrf-token" content={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')} />
             </Head>
             {children}
-            <ChatWidget />
+            {/* <ChatWidget /> */}
         </div>
     );
 }
