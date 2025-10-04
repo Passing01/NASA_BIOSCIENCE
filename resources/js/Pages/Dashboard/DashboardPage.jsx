@@ -282,7 +282,7 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                     <header className="dashboard-header">
                         <div className="d-flex justify-content-between align-items-center">
                             {/* <img src="images/nasa-logo.jpg" alt="NASA Logo" /> */}
-                            <h1 className="h4 mb-0">NASA BIOSCIENCE</h1>
+                            <h1 className="h4 mb-0">BIOASTRA</h1>
                             <div className="d-flex align-items-center gap-3">
                                 {/* <div className="search-box">
                                     <SearchIcon className="search-icon" />
@@ -347,17 +347,8 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                         </header>
 
                     <div className="content-wrapper">
-                        {/* Section Ressources */}
+                        {/* Section Expériences avec filtres */}
                         <section className="mb-4">
-                            {/* <div className="d-flex justify-content-between align-items-center mb-3">
-                                <h2 className="h5 mb-0">Ressources</h2>
-                                <Button variant="primary" size="sm">
-                                    <Plus size={16} className="me-1" />
-                                    Ajouter une ressource
-                                </Button>
-                            </div> */}
-                            
-                            {/* Section de filtrage */}
                             <FilterSection 
                                 filters={filters} 
                                 onFilterChange={handleFilterChange}
@@ -367,53 +358,14 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                                 statuses={statuses}
                             />
 
-                            {/* Affichage des ressources filtrées */}
-                            {loading ? (
-                                <div className="text-center py-5 text-muted">Loading resources...</div>
-                            ) : filteredResources.length > 0 ? (
-                                <>
-                                    <Row className="g-3">
-                                        {filteredResources.slice(0, displayCount).map(resource => (
-                                            <Col key={resource.id} xs={12} md={6} lg={4}>
-                                                <ResourceCard 
-                                                    id={resource.id}
-                                                    title={resource.title}
-                                                    year={resource.year}
-                                                    organization={resource.organization}
-                                                    status={resource.status}
-                                                    type={resource.type}
-                                                    url={resource.url}
-                                                    onClick={() => handleResourceSelect(resource)}
-                                                />
-                                            </Col>
-                                        ))}
-                                    </Row>
-                                    {filteredResources.length > displayCount && (
-                                        <div className="text-center mt-4">
-                                            <Button 
-                                                variant="outline-primary" 
-                                                onClick={showMore}
-                                            >
-                                                Show more
-                                            </Button>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="text-center py-5">
-                                    <p className="text-muted">No resources found.</p>
-                                    <Button 
-                                        variant="outline-primary" 
-                                        onClick={() => handleFilterChange('reset', '')}
-                                    >
-                                        Reset filters
-                                    </Button>
-                                </div>
-                            )}
+                            <ExperiencesSection 
+                                searchTerm={filters.search}
+                                yearFilter={filters.year}
+                                organizationFilter={filters.organization}
+                                statusFilter={filters.status}
+                                typeFilter={filters.type}
+                            />
                         </section>
-
-                        {/* Section Expériences */}
-                        <ExperiencesSection />
                     </div>
                 </div>
             </div>

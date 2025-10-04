@@ -14,19 +14,31 @@ const getStatusVariant = (status) => {
     }
 };
 
-export default function ExperiencesSection() {
+export default function ExperiencesSection({ 
+    searchTerm = '', 
+    yearFilter = '', 
+    organizationFilter = '', 
+    statusFilter = '', 
+    typeFilter = '' 
+}) {
     const [experiments, setExperiments] = useState([]);
     const [filteredExperiments, setFilteredExperiments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filters, setFilters] = useState({
-        status: 'all', // 'all', 'in_progress', 'completed', 'pending'
-        search: ''
-    });
+    
+    // Utiliser les filtres passés en props
+    const filters = useMemo(() => ({
+        search: searchTerm || '',
+        year: yearFilter || '',
+        organization: organizationFilter || '',
+        status: statusFilter || 'all',
+        type: typeFilter || ''
+    }), [searchTerm, yearFilter, organizationFilter, statusFilter, typeFilter]);
 
     // Charger les expériences depuis resources.json
     useEffect(() => {
         let mounted = true;
+        
         const load = async () => {
             setIsLoading(true);
             setError(null);
@@ -45,7 +57,7 @@ export default function ExperiencesSection() {
                 // Transformer les ressources en format d'expériences
                 const experiences = resources.map((resource, index) => {
                     // Extraire l'année de l'URL ou du titre
-                    const yearMatch = resource.url.match(/\/(\d{4})\//) || resource.title.match(/(20\d{2})/);
+                    const yearMatch = resource.url?.match(/\/(\d{4})\//) || resource.title?.match(/(20\d{2})/);
                     const year = yearMatch ? yearMatch[1] : new Date().getFullYear();
                     
                     // Générer des dates aléatoires pour la période
@@ -67,9 +79,10 @@ export default function ExperiencesSection() {
                     
                     // Déterminer l'organisation en fonction de l'URL
                     let organization = 'NASA';
-                    if (resource.url.includes('nih.gov')) organization = 'NIH';
-                    else if (resource.url.includes('esahubble.org')) organization = 'ESA';
-                    else if (resource.url.includes('jaxa.jp')) organization = 'JAXA';
+                    const url = resource.url || '';
+                    if (url.includes('nih.gov')) organization = 'NIH';
+                    else if (url.includes('esahubble.org')) organization = 'ESA';
+                    else if (url.includes('jaxa.jp')) organization = 'JAXA';
                     
                     return {
                         id: resource.id || index + 1,
@@ -79,7 +92,9 @@ export default function ExperiencesSection() {
                         status,
                         progress,
                         organization,
-                        url: resource.url
+                        url: url,
+                        // Ajouter le type si disponible
+                        type: resource.type || 'Research'
                     };
                 });
                 
@@ -99,23 +114,42 @@ export default function ExperiencesSection() {
         return () => { mounted = false; };
     }, []);
     
-    // Appliquer les filtres
+    // Filtrer les expériences
     useEffect(() => {
         if (!experiments.length) return;
         
         const filtered = experiments.filter(exp => {
             // Filtre par statut
-            const statusMatch = filters.status === 'all' || 
-                (filters.status === 'in_progress' && exp.status === 'In progress') ||
-                (filters.status === 'completed' && exp.status === 'Completed') ||
-                (filters.status === 'pending' && exp.status === 'Pending');
+            if (filters.status && filters.status !== 'all' && exp.status !== filters.status) {
+                return false;
+            }
             
             // Filtre par recherche
-            const searchMatch = !filters.search || 
-                exp.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-                exp.organization.toLowerCase().includes(filters.search.toLowerCase());
+            if (filters.search && !exp.name.toLowerCase().includes(filters.search.toLowerCase())) {
+                return false;
+            }
             
-            return statusMatch && searchMatch;
+            // Filtre par organisation
+            if (filters.organization && exp.organization !== filters.organization) {
+                return false;
+            }
+            
+            // Filtre par année
+            if (filters.year) {
+                const expYear = exp.startDate?.split('-')[0];
+                if (expYear !== filters.year) {
+                    return false;
+                }
+            }
+            
+            // Filtre par type (à adapter selon vos besoins)
+            if (filters.type) {
+                // Implémentez la logique de filtrage par type si nécessaire
+                // Par exemple, si vous avez un champ 'type' dans vos expériences
+                // if (exp.type !== filters.type) return false;
+            }
+            
+            return true;
         });
         
         setFilteredExperiments(filtered);

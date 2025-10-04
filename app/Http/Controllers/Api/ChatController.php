@@ -31,37 +31,48 @@ class ChatController extends Controller
         try {
             $request->validate([
                 'message' => 'required|string|max:1000',
-                'context' => 'sometimes|array'
+                'language' => 'sometimes|string|in:en,fr',
+                'context' => 'sometimes|array',
+                'resourceId' => 'sometimes|integer|exists:resources,id'
             ]);
 
             $message = trim($request->message);
+            $language = $request->input('language', 'en'); // Par défaut en anglais
             
             if (empty($message)) {
+                $errorMessage = $language === 'fr' 
+                    ? 'Le message ne peut pas être vide.'
+                    : 'Message cannot be empty.';
+                    
                 return response()->json([
                     'success' => false,
-                    'message' => 'Le message ne peut pas être vide.'
+                    'message' => $errorMessage
                 ], 400);
             }
             
-            // Vérifier d'abord le cache
-            $cachedResponse = $this->cacheService->getCachedResponse($message);
+            // Vérifier d'abord le cache (inclure la langue dans la clé de cache)
+            $cacheKey = $language . '_' . md5($message);
+            $cachedResponse = $this->cacheService->getCachedResponse($cacheKey);
             if ($cachedResponse !== null) {
                 return response()->json([
                     'success' => true,
                     'response' => $cachedResponse,
-                    'cached' => true,
                     'timestamp' => now()->toDateTimeString()
                 ]);
             }
 
             // Vérifier si c'est une question fréquente
-            $isFrequent = $this->cacheService->isFrequentlyAsked($message);
+            // Si pas dans le cache, appeler le service OpenAI avec la langue
+            $context = $request->input('context', []);
+            $resourceId = $request->input('resourceId');
             
-            // Obtenir la réponse de l'IA
+            // Ajouter la langue au contexte
+            $context['user_language'] = $language;
+            
             $response = $this->openAIService->getResponse(
-                $message,
-                $request->input('context', []),
-                $isFrequent // Mode rapide pour les questions fréquentes
+                $message, 
+                $context, 
+                $resourceId
             );
 
             // Si la réponse est vide ou une erreur, renvoyer une erreur
@@ -69,17 +80,16 @@ class ChatController extends Controller
                 throw new \Exception('La réponse de l\'IA est vide.');
             }
 
-            // Mettre en cache la réponse
-            $this->cacheService->cacheResponse($message, $response);
-            
-            // Incrémenter le compteur de fréquence
-            $this->cacheService->incrementQuestionFrequency($message);
+            // Mettre en cache la réponse avec la clé incluant la langue
+            $this->cacheService->cacheResponse($cacheKey, [
+                'message' => $response['message'] ?? '',
+                'context' => $response['context'] ?? []
+            ]);
 
             return response()->json([
                 'success' => true,
                 'response' => $response,
                 'cached' => false,
-                'is_frequent' => $isFrequent,
                 'timestamp' => now()->toDateTimeString()
             ]);
 
