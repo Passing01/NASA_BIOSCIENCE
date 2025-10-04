@@ -329,7 +329,7 @@ export default function AIChat({ selectedResourceId }) {
     return (
         <div className="chat-container">
             <div className="chat-header">
-                AI Assistant for NASA Bioscience
+                ASTRAMIND
             </div>
             
             <div className="chat-messages">

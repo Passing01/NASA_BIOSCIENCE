@@ -39,7 +39,7 @@ export default function ExperiencesSection() {
                 const resources = await response.json();
                 
                 if (!Array.isArray(resources)) {
-                    throw new Error('Les données reçues ne sont pas un tableau');
+                    throw new Error('The received data is not an array');
                 }
                 
                 // Transformer les ressources en format d'expériences

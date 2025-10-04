@@ -19,8 +19,20 @@ class OpenAIService
     protected $resources = [];
     
     /**
+     * Fichier de ressources
      */
     protected $resourcesFile;
+
+    /**
+     * État de la conversation
+     */
+    protected $conversationState = [
+        'language' => 'en',
+        'waiting_for_question' => true,
+        'waiting_for_summary_confirmation' => false,
+        'waiting_for_detail_confirmation' => false,
+        'current_publications' => []
+    ];
 
     public function __construct()
     {
@@ -103,6 +115,211 @@ class OpenAIService
      * Stream a response from Gemini and call $onChunk with incremental text.
      * The callback signature is function(string $delta): void
      */
+    /**
+     * Gère le flux de conversation
+     */
+    protected function handleConversationFlow(string $message, array &$context, ?int $resourceId, callable $onChunk): bool
+    {
+        $normalized = mb_strtolower(trim($message));
+        
+        // Étape 1: Demander la langue si c'est le début de la conversation
+        if ($this->conversationState['waiting_for_question'] && empty($context)) {
+            $this->conversationState['language'] = 'en'; // Par défaut en anglais
+            $greeting = "In which language would you like to communicate? (English/Français)";
+            if ($onChunk) $onChunk($greeting);
+            return true;
+        }
+        
+        // Vérifier la langue sélectionnée
+        if (preg_match('/(français|francais|french|fr)\b/i', $normalized)) {
+            $this->conversationState['language'] = 'fr';
+            $response = "Parfait ! En quoi puis-je vous aider aujourd'hui ?";
+        } elseif (preg_match('/(english|en|anglais)\b/i', $normalized)) {
+            $this->conversationState['language'] = 'en';
+            $response = "Great! How can I assist you today?";
+        } else if ($this->conversationState['waiting_for_question']) {
+            // Si on attend une question et qu'aucune langue n'est détectée, on passe à l'étape suivante
+            $this->conversationState['waiting_for_question'] = false;
+            return false;
+        }
+        
+        if (isset($response) && $onChunk) {
+            $onChunk($response);
+            return true;
+        }
+        
+        // Gestion des réponses oui/non pour les résumés
+        if ($this->conversationState['waiting_for_summary_confirmation']) {
+            if (preg_match('/(oui|yes|ouais|bien sûr|bien sur|d\'accord|ok|okay|bien|avec plaisir)\b/i', $normalized)) {
+                // Générer un résumé court
+                $this->generateSummary($context, $onChunk);
+                $this->conversationState['waiting_for_summary_confirmation'] = false;
+                $this->conversationState['waiting_for_detail_confirmation'] = true;
+                
+                // Demander si l'utilisateur veut plus de détails
+                $followUp = $this->conversationState['language'] === 'fr' ? 
+                    "\n\nSouhaitez-vous une explication plus détaillée ? (Oui/Non)" :
+                    "\n\nWould you like a more detailed explanation? (Yes/No)";
+                
+                if ($onChunk) $onChunk($followUp);
+                return true;
+            } else {
+                $response = $this->conversationState['language'] === 'fr' ?
+                    "Très bien. N'hésitez pas si vous avez d'autres questions !" :
+                    "Very well. Feel free to ask if you have any other questions!";
+                if ($onChunk) $onChunk($response);
+                $this->resetConversationState();
+                return true;
+            }
+        }
+        
+        // Gestion des réponses pour les détails supplémentaires
+        if ($this->conversationState['waiting_for_detail_confirmation']) {
+            if (preg_match('/(oui|yes|ouais|bien sûr|bien sur|d\'accord|ok|okay|bien|avec plaisir)\b/i', $normalized)) {
+                // Générer une explication détaillée
+                $this->generateDetailedExplanation($context, $onChunk);
+            } else {
+                $response = $this->conversationState['language'] === 'fr' ?
+                    "Très bien. N'hésitez pas si vous avez d'autres questions !" :
+                    "Very well. Feel free to ask if you have any other questions!";
+                if ($onChunk) $onChunk($response);
+            }
+            $this->resetConversationState();
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Recherche des publications pertinentes dans resources.json
+     */
+    protected function searchPublications(string $query): array
+    {
+        try {
+            // Charger les ressources depuis le fichier JSON
+            $resources = json_decode(file_get_contents($this->resourcesFile), true);
+            
+            if (empty($resources)) {
+                Log::warning('Aucune ressource trouvée dans le fichier resources.json');
+                return [];
+            }
+            
+            // Préparer la requête pour la recherche
+            $query = strtolower(trim($query));
+            $keywords = array_filter(explode(' ', $query), function($word) {
+                return strlen($word) > 2; // Ignorer les mots trop courts
+            });
+            
+            // Recherche par mots-clés dans le titre
+            $results = [];
+            foreach ($resources as $resource) {
+                if (!isset($resource['title']) || !isset($resource['id'])) continue;
+                
+                $title = strtolower($resource['title']);
+                $score = 0;
+                
+                // Calculer un score de pertinence basé sur les mots-clés
+                foreach ($keywords as $keyword) {
+                    if (strpos($title, $keyword) !== false) {
+                        $score++;
+                    }
+                }
+                
+                if ($score > 0) {
+                    $results[] = [
+                        'id' => $resource['id'],
+                        'title' => $resource['title'],
+                        'url' => $resource['url'] ?? '#',
+                        'score' => $score
+                    ];
+                }
+            }
+            
+            // Trier par score décroissant
+            usort($results, function($a, $b) {
+                return $b['score'] <=> $a['score'];
+            });
+            
+            return array_slice($results, 0, 5); // Retourner les 5 meilleurs résultats
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la recherche de publications: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Génère un résumé court des publications
+     */
+    protected function generateSummary(array $context, ?callable $onChunk): void
+    {
+        $summary = $this->conversationState['language'] === 'fr' ?
+            "Voici un bref résumé des publications pertinentes :\n\n" :
+            "Here's a brief summary of relevant publications:\n\n";
+        
+        // Récupérer les publications pertinentes
+        $publications = $this->conversationState['current_publications'] ?? [];
+        
+        if (empty($publications)) {
+            $noResults = $this->conversationState['language'] === 'fr' ?
+                "Aucune publication pertinente trouvée dans notre base de données. Je vais effectuer une recherche plus large..." :
+                "No relevant publications found in our database. I'll perform a broader search...";
+                
+            if ($onChunk) $onChunk($noResults);
+            
+            // Ici, vous pourriez ajouter une logique pour chercher dans d'autres sources
+            // Par exemple, appeler une API externe ou effectuer une recherche web
+            
+            return;
+        }
+        
+        // Générer le résumé pour chaque publication
+        foreach ($publications as $pub) {
+            $summary .= "- " . ($pub['title'] ?? 'Sans titre') . "\n";
+            
+            // Ajouter l'URL si disponible
+            if (!empty($pub['url'])) {
+                $summary .= "  " . $pub['url'] . "\n";
+            }
+            
+            $summary .= "\n";
+        }
+        
+        if ($onChunk) $onChunk($summary);
+    }
+    
+    /**
+     * Génère une explication détaillée
+     */
+    protected function generateDetailedExplanation(array $context, ?callable $onChunk): void
+    {
+        // Implémentez ici la génération d'une explication détaillée
+        $details = $this->conversationState['language'] === 'fr' ?
+            "Voici une explication plus détaillée :\n\n" :
+            "Here's a more detailed explanation:\n\n";
+        
+        // Exemple d'explication détaillée (à adapter)
+        $details .= "1. Détail important 1 avec plus d'informations...\n";
+        $details .= "2. Détail important 2 avec plus d'informations...\n";
+        
+        if ($onChunk) $onChunk($details);
+    }
+    
+    /**
+     * Réinitialise l'état de la conversation
+     */
+    protected function resetConversationState(): void
+    {
+        $this->conversationState = [
+            'language' => 'en',
+            'waiting_for_question' => true,
+            'waiting_for_summary_confirmation' => false,
+            'waiting_for_detail_confirmation' => false,
+            'current_publications' => []
+        ];
+    }
+    
     public function streamResponse(string $message, array $context = [], ?int $resourceId = null, callable $onChunk = null)
     {
         // Étendre le temps d'exécution
@@ -142,13 +359,68 @@ class OpenAIService
             return;
         }
 
-        // Construire le message système de base
-        $systemMessage = "Vous êtes un assistant d'IA expert en biosciences spatiales.\n" .
-                       "Si une ressource est fournie, répondez PRIORITAIREMENT en vous appuyant sur son contenu.\n" .
-                       "Sinon, répondez avec vos connaissances générales en biosciences spatiales.\n" .
-                       "Réponses: concises, factuelles, et avec références précises à la ressource quand pertinent.\n" .
-                       "Si la question sort du domaine des biosciences spatiales, répondez poliment que vous êtes spécialisé dans ce domaine.";
+        // Gérer le flux de conversation
+        if ($this->handleConversationFlow($message, $context, $resourceId, $onChunk)) {
+            return;
+        }
 
+        // Construire le message système de base
+        $systemMessage = $this->conversationState['language'] === 'fr' ?
+            "Vous êtes un assistant d'IA expert en biosciences spatiales.\n" .
+            "Si une ressource est fournie, répondez PRIORITAIREMENT en vous appuyant sur son contenu.\n" .
+            "Sinon, répondez avec vos connaissances générales en biosciences spatiales.\n" .
+            "Réponses: concises, factuelles, et avec références précises à la ressource quand pertinent.\n" .
+            "Si la question sort du domaine des biosciences spatiales, répondez poliment que vous êtes spécialisé dans ce domaine." :
+            "You are an AI assistant specialized in space biosciences.\n" .
+            "If a resource is provided, prioritize using its content in your response.\n" .
+            "Otherwise, respond using your general knowledge of space biosciences.\n" .
+            "Responses should be: concise, factual, with precise references to the resource when relevant.\n" .
+            "If the question is outside the domain of space biosciences, politely explain that you specialize in this field.";
+
+        // Vérifier si c'est une question nécessitant des recommandations
+        $isQuestion = !empty(trim($message)) && !in_array(strtolower(trim($message)), ['oui', 'non', 'yes', 'no', 'ok']);
+        
+        if ($isQuestion) {
+            // Rechercher des publications pertinentes dans resources.json
+            $publications = $this->searchPublications($message);
+            $this->conversationState['current_publications'] = $publications;
+            
+            // Préparer le message de réponse
+            if (empty($publications)) {
+                $response = $this->conversationState['language'] === 'fr' ?
+                    "Je n'ai pas trouvé de publications correspondant à votre recherche dans notre base de données. " .
+                    "Je vais effectuer une recherche plus approfondie..." :
+                    "I couldn't find any publications matching your search in our database. " .
+                    "I'll perform a more thorough search...";
+                
+                if ($onChunk) $onChunk($response);
+                
+                // Ici, vous pourriez ajouter une logique pour chercher dans d'autres sources
+                // Par exemple, appeler une API externe ou effectuer une recherche web
+                
+                return;
+            }
+            
+            // Demander à l'utilisateur s'il veut un résumé
+            $summaryQuestion = $this->conversationState['language'] === 'fr' ?
+                "\n\nSouhaitez-vous un bref résumé de ces publications ? (Oui/Non)" :
+                "\n\nWould you like a brief summary of these publications? (Yes/No)";
+            
+            $this->conversationState['waiting_for_summary_confirmation'] = true;
+            
+            // Afficher les recommandations
+            $recommendations = $this->conversationState['language'] === 'fr' ?
+                "J'ai trouvé " . count($publications) . " publications qui pourraient vous intéresser :\n" :
+                "I found " . count($publications) . " publications you might be interested in:\n";
+            
+            foreach ($publications as $pub) {
+                $recommendations .= "- " . ($pub['title'] ?? 'Sans titre') . "\n";
+            }
+            
+            if ($onChunk) $onChunk($recommendations . $summaryQuestion);
+            return;
+        }
+        
         // Gestion de la ressource sélectionnée
         $resource = null;
         if ($resourceId) {
