@@ -3,7 +3,7 @@
 return [
     'api_key' => env('GEMINI_API_KEY', ''),
     // You can change the default model here. Examples: gemini-1.5-pro, gemini-1.5-flash, gemini-1.5-flash-8b
-    'model' => env('GEMINI_MODEL', 'gemini-1.5-pro'),
+    'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     'timeout' => (int) env('GEMINI_TIMEOUT', 60), // seconds
     'connect_timeout' => (int) env('GEMINI_CONNECT_TIMEOUT', 10), // seconds
     // SSL verification (set GEMINI_SSL_VERIFY=false to disable temporarily; recommended to keep true)
