@@ -51,4 +51,5 @@ class RateLimitChat
         $cache->put($key, $attempts + 1, now()->addMinutes($this->decayMinutes));
 
         return $next($request);
+    }
 }
