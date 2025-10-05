@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 
 class ChatCacheService
@@ -10,30 +11,49 @@ class ChatCacheService
      * Durée de vie du cache en secondes (1 jour par défaut)
      */
     protected $ttl = 86400;
+    
+    /**
+     * Instance du cache
+     */
+    protected $cache;
+    
+    public function __construct()
+    {
+        // Utiliser le driver 'array' pour le cache en mémoire
+        $this->cache = app('cache')->driver('array');
+    }
 
     /**
      * Obtenir une réponse en cache si elle existe
      *
-     * @param string $message
+     * @param string $cacheKey
      * @return string|null
      */
-    public function getCachedResponse(string $message): ?string
+    public function getCachedResponse(string $cacheKey): ?string
     {
-        $key = $this->generateCacheKey($message);
-        return Cache::get($key);
+        // Désactiver le cache en environnement local
+        if (App::environment('local')) {
+            return null;
+        }
+        
+        return $this->cache->get($cacheKey);
     }
 
     /**
      * Stocker une réponse dans le cache
      *
-     * @param string $message
+     * @param string $cacheKey
      * @param string $response
      * @return void
      */
-    public function cacheResponse(string $message, string $response): void
+    public function cacheResponse(string $cacheKey, string $response): void
     {
-        $key = $this->generateCacheKey($message);
-        Cache::put($key, $response, now()->addSeconds($this->ttl));
+        // Ne pas mettre en cache en environnement local
+        if (App::environment('local')) {
+            return;
+        }
+        
+        $this->cache->put($cacheKey, $response, now()->addSeconds($this->ttl));
     }
 
     /**
@@ -44,12 +64,8 @@ class ChatCacheService
      */
     protected function generateCacheKey(string $message): string
     {
-        // Normaliser le message (minuscules, suppression des espaces superflus, etc.)
-        $normalized = trim(strtolower($message));
-        $normalized = preg_replace('/\s+/', ' ', $normalized);
-        
-        // Créer une clé de hachage unique
-        return 'chat_response:' . md5($normalized);
+        // Utiliser directement la clé fournie (déjà générée dans le contrôleur)
+        return $message;
     }
 
     /**
