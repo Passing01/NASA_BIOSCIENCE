@@ -641,6 +641,32 @@ class OpenAIService
         // Utiliser le modèle Gemini défini
         $model = $this->geminiModel;
         
+        // Construire le message système en fonction du contexte et de la langue
+        $language = $context['user_language'] ?? 'fr';
+        
+        $systemMessage = $language === 'fr' 
+            ? "Vous êtes un assistant d'IA expert en biosciences spatiales. "
+            : "You are an AI assistant specialized in space biosciences. ";
+            
+        if (isset($context['resource'])) {
+            $resource = $context['resource'];
+            $systemMessage .= $language === 'fr'
+                ? "\n\nVous répondez en vous basant sur la ressource fournie. "
+                    . "Si la question n'est pas en rapport avec cette ressource, répondez en utilisant vos connaissances générales en biosciences spatiales.\n"
+                    . "Titre de la ressource: " . ($resource['title'] ?? 'Inconnu') . "\n"
+                    . "Contenu: " . substr($resource['content'] ?? '', 0, 2000) . (strlen($resource['content'] ?? '') > 2000 ? '...' : '')
+                : "\n\nYou are responding based on the provided resource. "
+                    . "If the question is not related to this resource, respond using your general knowledge of space biosciences.\n"
+                    . "Resource title: " . ($resource['title'] ?? 'Unknown') . "\n"
+                    . "Content: " . substr($resource['content'] ?? '', 0, 2000) . (strlen($resource['content'] ?? '') > 2000 ? '...' : '');
+        } else {
+            $systemMessage .= $language === 'fr'
+                ? "\n\nVous répondez en utilisant vos connaissances générales en biosciences spatiales. "
+                    . "Si la question sort de ce domaine, expliquez poliment que vous êtes spécialisé dans les biosciences spatiales."
+                : "\n\nYou respond using your general knowledge of space biosciences. "
+                    . "If the question is outside this domain, politely explain that you specialize in space biosciences.";
+        }
+        
         // Log de débogage
         Log::info('Début de getResponse', [
             'model' => $model,
@@ -675,26 +701,30 @@ class OpenAIService
             return $html;
         }
 
-        // Préparer le message système: privilégier la ressource si fournie, sinon connaissances générales en biosciences
-        $systemMessage = "Vous êtes un assistant d'IA expert en biosciences spatiales.\n" .
-                         "Si une ressource est fournie, répondez prioritairement en vous appuyant sur son contenu.\n" .
-                         "Sinon, répondez avec vos connaissances générales en biosciences spatiales.\n" .
-                         "Si la question sort totalement du domaine des biosciences/space biosciences, répondez: \"Je ne suis pas ici pour répondre à cette question. Veuillez poser une question en lien avec les biosciences spatiales.\"\n" .
-                         "Réponses: concises, factuelles, et avec références à la ressource quand pertinent.";
+        // Préparer le message système en fonction du contexte et de la langue
+        $language = $context['user_language'] ?? 'fr';
         
-        if ($resourceId) {
-            $resource = $this->getResourceContent($resourceId);
-            if ($resource) {
-                // Créer un lien cliquable vers la ressource
-                $resourceLink = '<a href="' . $resource['url'] . '" target="_blank" style="color: #1a73e8; text-decoration: underline;">' . 
-                              htmlspecialchars($resource['title']) . '</a>';
-                
-                $systemMessage .= "\n\nRessource fournie : " . $resourceLink . "\n";
-                
-                // Ajouter le contenu de la ressource au contexte sans l'afficher dans le message
-                $context[] = "Contenu de la ressource " . $resource['title'] . ": " . 
-                           strip_tags(substr($resource['content'], 0, 2000)) . "...";
-            }
+        $systemMessage = $language === 'fr' 
+            ? "Vous êtes un assistant d'IA expert en biosciences spatiales. "
+            : "You are an AI assistant specialized in space biosciences. ";
+            
+        if (isset($context['resource'])) {
+            $resource = $context['resource'];
+            $systemMessage .= $language === 'fr'
+                ? "\n\nVous répondez en vous basant sur la ressource fournie. "
+                    . "Si la question n'est pas en rapport avec cette ressource, répondez en utilisant vos connaissances générales en biosciences spatiales.\n"
+                    . "Titre de la ressource: " . ($resource['title'] ?? 'Inconnu') . "\n"
+                    . "Contenu: " . substr($resource['content'] ?? '', 0, 2000) . (strlen($resource['content'] ?? '') > 2000 ? '...' : '')
+                : "\n\nYou are responding based on the provided resource. "
+                    . "If the question is not related to this resource, respond using your general knowledge of space biosciences.\n"
+                    . "Resource title: " . ($resource['title'] ?? 'Unknown') . "\n"
+                    . "Content: " . substr($resource['content'] ?? '', 0, 2000) . (strlen($resource['content'] ?? '') > 2000 ? '...' : '');
+        } else {
+            $systemMessage .= $language === 'fr'
+                ? "\n\nVous répondez en utilisant vos connaissances générales en biosciences spatiales. "
+                    . "Si la question sort de ce domaine, expliquez poliment que vous êtes spécialisé dans les biosciences spatiales."
+                : "\n\nYou respond using your general knowledge of space biosciences. "
+                    . "If the question is outside this domain, politely explain that you specialize in space biosciences.";
         }
 
         $messages = [
@@ -702,18 +732,19 @@ class OpenAIService
         ];
 
         // Ajouter le contexte de la conversation
-        foreach ($context as $msg) {
-            if (is_array($msg)) {
-                $messages[] = [
-                    'role' => ($msg['role'] ?? 'assistant') === 'user' ? 'user' : 'assistant',
-                    'content' => is_string($msg['content'] ?? null) ? strip_tags($msg['content']) : '',
-                ];
-            } elseif (is_string($msg)) {
-                // Si le contexte est une simple chaîne (ex: contenu de ressource), l'ajouter comme note système
-                $messages[] = [
-                    'role' => 'system',
-                    'content' => $msg,
-                ];
+        if (is_array($context)) {
+            foreach ($context as $msg) {
+                if (is_array($msg) && isset($msg['role'], $msg['content'])) {
+                    $messages[] = [
+                        'role' => $msg['role'] === 'user' ? 'user' : 'assistant',
+                        'content' => is_string($msg['content']) ? strip_tags($msg['content']) : '',
+                    ];
+                } elseif (is_string($msg)) {
+                    $messages[] = [
+                        'role' => 'system',
+                        'content' => strip_tags($msg),
+                    ];
+                }
             }
         }
 
@@ -727,21 +758,20 @@ class OpenAIService
                 'resource_id' => $resourceId
             ]);
 
-            // Construire le payload Gemini
-            $allTextParts = [];
-            foreach ($messages as $m) {
-                $content = trim((string) ($m['content'] ?? ''));
-                if ($content === '') continue;
-                $allTextParts[] = $content;
-            }
+            // Préparer le payload pour Gemini
             $payload = [
-                'contents' => [
-                    [
-                        'role' => 'user',
-                        'parts' => [ ['text' => implode("\n\n", $allTextParts)] ],
-                    ],
-                ],
-                'generationConfig' => [ 'temperature' => 0.7 ],
+                'contents' => array_map(function($msg) {
+                    return [
+                        'role' => $msg['role'] === 'assistant' ? 'model' : 'user',
+                        'parts' => [['text' => $msg['content']]]
+                    ];
+                }, $messages),
+                'generationConfig' => [
+                    'temperature' => 0.7,
+                    'maxOutputTokens' => 2000,
+                    'topP' => 0.8,
+                    'topK' => 40
+                ]
             ];
 
             $uri = sprintf('/v1/models/%s:generateContent', rawurlencode($model));

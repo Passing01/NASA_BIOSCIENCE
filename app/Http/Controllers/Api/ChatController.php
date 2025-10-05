@@ -33,43 +33,32 @@ class ChatController extends Controller
             $validated = $request->validate([
                 'message' => 'required|string',
                 'language' => 'sometimes|string|in:en,fr',
-                'resourceId' => [
-                    'nullable',
-                    'integer',
-                    function ($attribute, $value, $fail) {
-                        if ($value) {
-                            $resourcesJson = File::get(resource_path('data/resources.json'));
-                            $resources = json_decode($resourcesJson, true);
-                            $resourceExists = collect($resources)->contains('id', $value);
-                            
-                            if (!$resourceExists) {
-                                $fail('La ressource sélectionnée n\'existe pas.');
-                            }
-                        }
-                    }
-                ],
+                'resourceId' => 'nullable|integer',
                 'context' => 'sometimes|array'
             ]);
 
             $message = $request->input('message');
-            $language = $request->input('language', 'en');
+            $language = $request->input('language', 'fr'); // Français par défaut
             $resourceId = $request->input('resourceId');
             $context = $request->input('context', []);
 
-            // Si une ressource est fournie, on l'ajoute au contexte
+            // Si une ressource est fournie, on tente de l'ajouter au contexte
             if ($resourceId) {
-                $resourcesJson = File::get(resource_path('data/resources.json'));
-                $resources = json_decode($resourcesJson, true);
-                
-                // Trouver la ressource par son ID
-                $resource = collect($resources)->firstWhere('id', $resourceId);
-                
-                if ($resource) {
-                    $context['resource'] = [
-                        'id' => $resource['id'],
-                        'title' => $resource['name'] ?? $resource['title'] ?? 'Sans titre',
-                        'content' => $resource['content'] ?? $resource['description'] ?? ''
-                    ];
+                try {
+                    $resourcesJson = File::get(resource_path('data/resources.json'));
+                    $resources = json_decode($resourcesJson, true);
+                    $resource = collect($resources)->firstWhere('id', $resourceId);
+                    
+                    if ($resource) {
+                        $context['resource'] = [
+                            'id' => $resource['id'],
+                            'title' => $resource['name'] ?? $resource['title'] ?? 'Sans titre',
+                            'content' => $resource['content'] ?? $resource['description'] ?? ''
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // On continue même si la ressource ne peut pas être chargée
+                    Log::warning('Impossible de charger la ressource: ' . $e->getMessage());
                 }
             }
 
@@ -86,17 +75,17 @@ class ChatController extends Controller
                 ]);
             }
 
-            // Appeler le service d'IA avec ou sans ressource
+            // Appeler le service d'IA avec le contexte mis à jour
             $context['user_language'] = $language;
             
             $response = $this->openAIService->getResponse(
-                $message,
-                $context,
-                false, // fastMode
-                $resourceId
+                message: $message,
+                context: $context,
+                fastMode: false,
+                resourceId: $resourceId
             );
 
-            // Si la réponse est vide ou une erreur, renvoyer une erreur
+            // Si la réponse est vide, on retourne un message par défaut
             if (empty($response)) {
                 throw new \Exception('La réponse de l\'IA est vide.');
             }

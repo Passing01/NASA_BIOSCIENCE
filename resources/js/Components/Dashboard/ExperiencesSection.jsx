@@ -130,8 +130,28 @@ export default function ExperiencesSection({
         return () => { mounted = false; };
     }, []);
     
-    // Fonction pour gérer le clic sur une expérience
-    const handleViewClick = (exp) => {
+    // Fonction pour gérer le clic sur le bouton de sélection pour le chat
+    const handleSelectForChat = (exp) => {
+        // Incrémenter le compteur de vues
+        const newViewCount = incrementViewCount(exp.id);
+        
+        // Mettre à jour l'affichage
+        setFilteredExperiments(prev => 
+            prev.map(item => 
+                item.id === exp.id 
+                    ? { ...item, views: newViewCount } 
+                    : item
+            ).sort((a, b) => b.views - a.views)
+        );
+        
+        // Appeler la fonction de sélection si elle existe
+        if (onSelectExperience) {
+            onSelectExperience(exp);
+        }
+    };
+    
+    // Fonction pour gérer le clic sur le bouton de détails
+    const handleViewDetails = (exp) => {
         // Incrémenter le compteur de vues
         const newViewCount = incrementViewCount(exp.id);
         
@@ -213,53 +233,67 @@ export default function ExperiencesSection({
                             <tbody>
                                 {filteredExperiments.map(experiment => (
                                     <tr key={experiment.id}>
-                                        <td 
-                                            className="fw-medium" 
-                                            style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}
-                                            onClick={() => handleViewClick(experiment)}
-                                        >
-                                            {experiment.name || experiment.title || 'Sans nom'}
+                                        <td className="fw-medium" style={{ color: '#fff' }}>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewDetails(experiment);
+                                                }}
+                                                className="text-white hover:underline bg-transparent border-0 p-0 text-start"
+                                            >
+                                                {experiment.name || experiment.title || 'Sans nom'}
+                                            </button>
                                         </td>
-                                        <td className="text-muted" style={{ color: '#fff' }}>
+                                        <td style={{ color: '#fff' }}>
                                             {experiment.startDate || '—'} - {experiment.endDate || '—'}
                                         </td>
                                         <td>
                                             <Badge bg={getStatusVariant(experiment.status)}>
-                                                {experiment.status || '—'}
+                                                {experiment.status || 'Inconnu'}
                                             </Badge>
                                         </td>
                                         <td>
-                                            <div className="d-flex align-items-center">
-                                                <div className="progress flex-grow-1 me-2" style={{ height: '6px' }}>
-                                                    <div 
-                                                        className="progress-bar" 
-                                                        role="progressbar" 
-                                                        style={{ width: `${experiment.progress || 0}%` }}
-                                                        aria-valuenow={experiment.progress || 0}
-                                                        aria-valuemin="0"
-                                                        aria-valuemax="100"
-                                                    ></div>
+                                            <div className="progress" style={{ width: '100px' }}>
+                                                <div 
+                                                    className="progress-bar" 
+                                                    role="progressbar" 
+                                                    style={{ width: `${experiment.progress || 0}%` }}
+                                                    aria-valuenow={experiment.progress || 0}
+                                                    aria-valuemin="0" 
+                                                    aria-valuemax="100"
+                                                >
+                                                    {experiment.progress || 0}%
                                                 </div>
-                                                <small className="text-muted">{experiment.progress || 0}%</small>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <EyeFill className="me-1" />
-                                                <span>{experiment.views || 0}</span>
-                                            </div>
-                                        </td>
+                                        <td style={{ color: '#fff' }}>{experiment.views || 0}</td>
                                         <td style={{ color: '#fff' }}>{experiment.organization || '—'}</td>
                                         <td className="text-end">
-                                            <Button 
-                                                variant="outline-primary" 
-                                                size="sm"
-                                                onClick={() => handleViewClick(experiment)}
-                                                title="Voir les détails"
-                                            >
-                                                <Eye className="me-1" size={14} />
-                                                Voir
-                                            </Button>
+                                            <div className="btn-group" role="group">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-success me-1"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSelectForChat(experiment);
+                                                    }}
+                                                    title="Select for chat"
+                                                >
+                                                    💬
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleViewDetails(experiment);
+                                                    }}
+                                                    title="Details views"
+                                                >
+                                                    <Eye className="me-1" size={14} />
+                                                    Voir
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
