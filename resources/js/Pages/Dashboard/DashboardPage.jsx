@@ -5,84 +5,114 @@ import AppLayout from '@/Layouts/AppLayout';
 import ResourceCard from '@/Components/Dashboard/ResourceCard';
 import ExperiencesSection from '@/Components/Dashboard/ExperiencesSection';
 import AIChat from '@/Components/AIChat';
-import { 
-    Container, 
-    Row, 
-    Col,
-    Card,
-    Button,
-    Badge,
-    Form,
-    Dropdown
-} from 'react-bootstrap';
-import { 
-    Plus,
-    Bell,
-    QuestionCircle,
-    Gear,
-    Search as SearchIcon,
-    ChatSquareText
-} from 'react-bootstrap-icons';
+import { Container, Row, Col, Card, Button, Form } from 'react-bootstrap';
+import { ArrowCounterclockwise } from 'react-bootstrap-icons';
 
 // Composant de filtre
-const FilterSection = ({ filters, onFilterChange, years = [], organizations = [], types = [], statuses = [] }) => {
+const FilterSection = ({ filters, onFilterChange, years = [], organizations = [], statuses = [] }) => {
+    // Fonction pour réinitialiser tous les filtres
+    const handleReset = () => {
+        onFilterChange('reset');
+    };
+
+    // Vérifier si des filtres sont actifs
+    const hasActiveFilters = filters.year || filters.organization || filters.status;
+
     return (
-        <Card className="mb-4">
+        <Card className="mb-4" style={{ backgroundColor: '#1e3a5f', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
             <Card.Body>
-                <h5 className="mb-3" style={{ color: '#fff' }}>Filter resources</h5>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="mb-0" style={{ color: '#fff' }}>Filter resources</h5>
+                    {hasActiveFilters && (
+                        <Button 
+                            variant="outline-light" 
+                            size="sm" 
+                            onClick={handleReset}
+                            className="d-flex align-items-center"
+                        >
+                            <ArrowCounterclockwise className="me-1" />
+                            Reset
+                        </Button>
+                    )}
+                </div>
                 <Row>
                     <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Year</Form.Label>
+                            <Form.Label style={{ color: '#fff' }}>Search</Form.Label>
+                            <div className="d-flex">
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={filters.search || ''}
+                                    onChange={(e) => onFilterChange('search', e.target.value)}
+                                    style={{ 
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+                                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                                        color: '#fff'
+                                    }}
+                                />
+                            </div>
+                        </Form.Group>
+                    </Col>
+                    <Col md={2} className="mb-3">
+                        <Form.Group>
+                            <Form.Label style={{ color: '#fff' }}>Year</Form.Label>
                             <Form.Select 
-                                value={filters.year} 
-                                onChange={(e) => onFilterChange('year', e.target.value)}
+                                value={filters.year || ''} 
+                                onChange={(e) => onFilterChange('year', e.target.value || '')}
+                                className="custom-select"
+                                style={{ 
+                                    backgroundColor: '#1e3a5f', 
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
                             >
                                 <option value="">All years</option>
                                 {years.map(y => (
-                                    <option key={y} value={y}>{y}</option>
+                                    <option key={y} value={y} style={{ color: '#000' }}>{y}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
                     </Col>
-                    <Col md={3} className="mb-3">
+                    <Col md={2} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Organisation</Form.Label>
+                            <Form.Label style={{ color: '#fff' }}>Organization</Form.Label>
                             <Form.Select 
-                                value={filters.organization}
-                                onChange={(e) => onFilterChange('organization', e.target.value)}
+                                value={filters.organization || ''}
+                                onChange={(e) => onFilterChange('organization', e.target.value || '')}
+                                className="custom-select"
+                                style={{ 
+                                    backgroundColor: '#1e3a5f', 
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
                             >
-                                <option value="">All organizations</option>
+                                <option value="">All</option>
                                 {organizations.map(org => (
-                                    <option key={org} value={org}>{org}</option>
+                                    <option key={org} value={org} style={{ color: '#000' }}>{org}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
                     </Col>
-                    <Col md={3} className="mb-3">
+                    <Col md={2} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Type</Form.Label>
+                            <Form.Label style={{ color: '#fff' }}>Status</Form.Label>
                             <Form.Select 
-                                value={filters.type}
-                                onChange={(e) => onFilterChange('type', e.target.value)}
+                                value={filters.status || 'all'}
+                                onChange={(e) => onFilterChange('status', e.target.value || 'all')}
+                                className="custom-select"
+                                style={{ 
+                                    backgroundColor: '#1e3a5f', 
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
                             >
-                                <option value="">All types</option>
-                                {types.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </Form.Select>
-                        </Form.Group>
-                    </Col>
-                    <Col md={3} className="mb-3">
-                        <Form.Group>
-                            <Form.Label>Status</Form.Label>
-                            <Form.Select 
-                                value={filters.status}
-                                onChange={(e) => onFilterChange('status', e.target.value)}
-                            >
-                                <option value="">All statuses</option>
+                                <option value="all">All</option>
                                 {statuses.map(status => (
-                                    <option key={status} value={status}>{status}</option>
+                                    <option key={status} value={status} style={{ color: '#000' }}>{status}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>
@@ -146,38 +176,38 @@ export default function DashboardPage({ resources: initialResources = [] }) {
             setFilters({
                 year: '',
                 organization: '',
-                status: '',
+                status: 'all',
                 type: '',
                 search: ''
             });
         } else {
-            setFilters(prev => ({
-                ...prev,
-                [filterName]: value
-            }));
+            setFilters(prev => {
+                const newFilters = {
+                    ...prev,
+                    [filterName]: value
+                };
+                
+                // Si on change le statut, s'assurer que 'all' est géré correctement
+                if (filterName === 'status' && value === 'all') {
+                    newFilters.status = 'all';
+                }
+                
+                return newFilters;
+            });
         }
     };
     
-    // Options dynamiques pour les filtres
+    // Options pour les filtres
     const years = useMemo(() => 
         [...new Set(resources.map(r => r.year).filter(Boolean))].sort((a, b) => b - a),
         [resources]
     );
     
-    const organizations = useMemo(() => 
-        [...new Set(resources.map(r => r.organization).filter(Boolean))].sort(),
-        [resources]
-    );
+    // Organisations prédéfinies
+    const organizations = ['NASA', 'NIH'];
     
-    const types = useMemo(() => 
-        [...new Set(resources.map(r => r.type).filter(Boolean))].sort(),
-        [resources]
-    );
-    
-    const statuses = useMemo(() => 
-        [...new Set(resources.map(r => r.status).filter(Boolean))].sort(),
-        [resources]
-    );
+    // Statuts prédéfinis
+    const statuses = ['Completed', 'In progress', 'Pending'];
     
     // Afficher plus de résultats
     const showMore = () => {
@@ -261,28 +291,28 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                             </div>
                             
                             <div className="dashboard-content p-4">
-                                <FilterSection 
+<FilterSection 
                                     filters={filters} 
                                     onFilterChange={handleFilterChange}
                                     years={years}
                                     organizations={organizations}
-                                    types={types}
                                     statuses={statuses}
                                 />
 
-                                <ExperiencesSection 
-                                    searchTerm={filters.search}
-                                    yearFilter={filters.year}
-                                    organizationFilter={filters.organization}
-                                    statusFilter={filters.status}
-                                    typeFilter={filters.type}
-                                    onSelectExperience={(exp) => setSelectedExperience(exp)}
-                                />
+                                <div className="mt-4">
+                                    <ExperiencesSection 
+                                        searchTerm={filters.search}
+                                        yearFilter={filters.year}
+                                        organizationFilter={filters.organization}
+                                        statusFilter={filters.status || 'all'}
+                                        onSelectExperience={(exp) => setSelectedExperience(exp)}
+                                    />
+                                </div>
                                 
                                 {resources.length > displayCount && (
                                     <div className="text-center mt-4">
                                         <Button onClick={showMore} variant="primary">
-                                            Afficher plus
+                                            Show more
                                         </Button>
                                     </div>
                                 )}

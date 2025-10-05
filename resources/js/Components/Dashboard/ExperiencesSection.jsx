@@ -179,14 +179,23 @@ export default function ExperiencesSection({
         const filtered = experiments
             .map(exp => ({
                 ...exp,
-                views: getViewCount(exp.id) || 0
+                views: getViewCount(exp.id) || 0,
+                // Ajouter les champs manquants pour le filtrage
+                year: exp.year || exp.startDate?.split('-')[0] || new Date().getFullYear().toString(),
+                organization: exp.organization || 'NASA',
+                type: exp.type || 'Research',
+                status: exp.status || 'In progress'
             }))
             .filter(exp => {
-                const matchesSearch = !filters.search || 
-                    (exp.title?.toLowerCase().includes(filters.search.toLowerCase()) || 
-                    (exp.description?.toLowerCase().includes(filters.search.toLowerCase()) || ''));
+                // Recherche dans le nom et la description
+                const searchTerm = (filters.search || '').toLowerCase();
+                const matchesSearch = !searchTerm || 
+                    (exp.name?.toLowerCase().includes(searchTerm) || 
+                     exp.title?.toLowerCase().includes(searchTerm) ||
+                     (exp.description?.toLowerCase().includes(searchTerm) || ''));
                 
-                const matchesYear = !filters.year || exp.year === filters.year;
+                // Filtres
+                const matchesYear = !filters.year || exp.year.toString() === filters.year.toString();
                 const matchesOrg = !filters.organization || exp.organization === filters.organization;
                 const matchesStatus = filters.status === 'all' || exp.status === filters.status;
                 const matchesType = !filters.type || exp.type === filters.type;
@@ -206,13 +215,13 @@ export default function ExperiencesSection({
                         <h5 className="mb-0 me-2">Resources</h5>
                         <span className="text-muted small">
                             <EyeFill className="me-1" />
-                            Classées par popularité
+                            Ranked by popularity
                         </span>
                     </div>
                 </div>
                 <div className="table-responsive">
                     {isLoading && (
-                        <div className="text-center text-muted py-3">Chargement des ressources...</div>
+                        <div className="text-center text-muted py-3">Loading resources...</div>
                     )}
                     {error && !isLoading && (
                         <div className="text-center text-danger py-3">{error}</div>
@@ -221,9 +230,9 @@ export default function ExperiencesSection({
                         <Table hover className="mb-0">
                             <thead>
                                 <tr>
-                                    <th>Nom</th>
+                                    <th>Name</th>
                                     <th>Date</th>
-                                    <th>Statut</th>
+                                    <th>Status</th>
                                     <th>Progression</th>
                                     <th>Views</th>
                                     <th>Organisation</th>
@@ -291,7 +300,7 @@ export default function ExperiencesSection({
                                                     title="Details views"
                                                 >
                                                     <Eye className="me-1" size={14} />
-                                                    Voir
+                                                    View
                                                 </button>
                                             </div>
                                         </td>
