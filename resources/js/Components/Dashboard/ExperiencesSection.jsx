@@ -262,11 +262,15 @@ export default function ExperiencesSection({
                                             </Badge>
                                         </td>
                                         <td>
-                                            <div className="progress" style={{ width: '100px' }}>
+                                            <div className="progress" style={{ width: '100px', height: '24px' }}>
                                                 <div 
-                                                    className="progress-bar" 
+                                                    className="progress-bar d-flex align-items-center justify-content-center" 
                                                     role="progressbar" 
-                                                    style={{ width: `${experiment.progress || 0}%` }}
+                                                    style={{
+                                                        width: `${experiment.progress || 0}%`,
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 'bold'
+                                                    }}
                                                     aria-valuenow={experiment.progress || 0}
                                                     aria-valuemin="0" 
                                                     aria-valuemax="100"

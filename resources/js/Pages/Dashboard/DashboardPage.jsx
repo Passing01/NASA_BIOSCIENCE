@@ -288,11 +288,6 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                             {/* En-tête */}
                             <div className="d-flex justify-content-between align-items-center p-3" style={{ backgroundColor: '#1e3a5f', color: 'white' }}>
                                 <div className="d-flex align-items-center">
-                                    <img 
-                                        src="/images/nasa-logo.jpg" 
-                                        alt="NASA Logo" 
-                                        style={{ height: '30px', marginRight: '10px' }}
-                                    />
                                     <h1 className="h4 mb-0">BIOASTRA</h1>
                                 </div>
                             </div>
