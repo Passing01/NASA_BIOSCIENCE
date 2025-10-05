@@ -33,8 +33,8 @@ Route::prefix('ai')->group(function () {
 });
 
 // Routes pour le chat IA avec limitation de débit
-Route::prefix('chat')->middleware(['rate.limit'])->group(function () {
-    Route::post('/message', [\App\Http\Controllers\Api\ChatController::class, 'sendMessage']);
+Route::prefix('chat')->group(function () {
+    Route::middleware('rate.limit')->post('/message', [\App\Http\Controllers\Api\ChatController::class, 'sendMessage']);
     Route::get('/resources', [\App\Http\Controllers\Api\ChatController::class, 'getResources']);
 });
 
