@@ -19,22 +19,22 @@ export default defineConfig(({ command, mode }) => ({
             },
         }),
     ],
-    server: {
-        https: true,
-        hmr: {
-            protocol: 'wss',
-            host: 'nasa-bioscience.onrender.com'
-        }
-    },
     // server: {
-    //     host: 'localhost',
-    //     port: 5173,
-    //     strictPort: true,
+    //     https: true,
     //     hmr: {
-    //       host: 'localhost',
-    //       protocol: 'ws',
+    //         protocol: 'wss',
+    //         host: 'nasa-bioscience.onrender.com'
     //     }
-    //   },
+    // },
+    server: {
+        host: 'localhost',
+        port: 5173,
+        strictPort: true,
+        hmr: {
+          host: 'localhost',
+          protocol: 'ws',
+        }
+      },
     build: {
         manifest: 'manifest.json',
         outDir: 'public/build',

@@ -29,16 +29,16 @@ const FilterSection = ({ filters, onFilterChange, years = [], organizations = []
     return (
         <Card className="mb-4">
             <Card.Body>
-                <h5 className="mb-3" style={{ color: '#fff' }}>Filtrer les ressources</h5>
+                <h5 className="mb-3" style={{ color: '#fff' }}>Filter resources</h5>
                 <Row>
                     <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Année</Form.Label>
+                            <Form.Label>Year</Form.Label>
                             <Form.Select 
                                 value={filters.year} 
                                 onChange={(e) => onFilterChange('year', e.target.value)}
                             >
-                                <option value="">Toutes les années</option>
+                                <option value="">All years</option>
                                 {years.map(y => (
                                     <option key={y} value={y}>{y}</option>
                                 ))}
@@ -52,7 +52,7 @@ const FilterSection = ({ filters, onFilterChange, years = [], organizations = []
                                 value={filters.organization}
                                 onChange={(e) => onFilterChange('organization', e.target.value)}
                             >
-                                <option value="">Toutes les organisations</option>
+                                <option value="">All organizations</option>
                                 {organizations.map(org => (
                                     <option key={org} value={org}>{org}</option>
                                 ))}
@@ -66,7 +66,7 @@ const FilterSection = ({ filters, onFilterChange, years = [], organizations = []
                                 value={filters.type}
                                 onChange={(e) => onFilterChange('type', e.target.value)}
                             >
-                                <option value="">Tous les types</option>
+                                <option value="">All types</option>
                                 {types.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}
@@ -75,12 +75,12 @@ const FilterSection = ({ filters, onFilterChange, years = [], organizations = []
                     </Col>
                     <Col md={3} className="mb-3">
                         <Form.Group>
-                            <Form.Label>Statut</Form.Label>
+                            <Form.Label>Status</Form.Label>
                             <Form.Select 
                                 value={filters.status}
                                 onChange={(e) => onFilterChange('status', e.target.value)}
                             >
-                                <option value="">Tous les statuts</option>
+                                <option value="">All statuses</option>
                                 {statuses.map(status => (
                                     <option key={status} value={status}>{status}</option>
                                 ))}

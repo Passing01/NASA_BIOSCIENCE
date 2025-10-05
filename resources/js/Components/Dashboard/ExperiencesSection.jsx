@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { Table, Dropdown, Badge, Button, Form, Card } from 'react-bootstrap';
-import { Funnel, Download, ThreeDotsVertical, Eye, Pencil, Trash, Search, ArrowCounterclockwise } from 'react-bootstrap-icons';
+import { Funnel, Download, Eye, Search, ArrowCounterclockwise, EyeFill } from 'react-bootstrap-icons';
+import { router } from '@inertiajs/react';
 
 // Les expériences sont chargées depuis l'API: /api/ai/experiments
 
@@ -12,6 +13,20 @@ const getStatusVariant = (status) => {
         case 'Pending': return 'warning';
         default: return 'secondary';
     }
+};
+
+// Fonction pour obtenir le compteur de vues depuis le localStorage
+const getViewCount = (id) => {
+    const views = JSON.parse(localStorage.getItem('resource_views') || '{}');
+    return views[id] || 0;
+};
+
+// Fonction pour incrémenter le compteur de vues
+const incrementViewCount = (id) => {
+    const views = JSON.parse(localStorage.getItem('resource_views') || '{}');
+    views[id] = (views[id] || 0) + 1;
+    localStorage.setItem('resource_views', JSON.stringify(views));
+    return views[id];
 };
 
 export default function ExperiencesSection({ 
@@ -105,7 +120,7 @@ export default function ExperiencesSection({
             } catch (e) {
                 if (!mounted) return;
                 console.error('Error loading experiments:', e);
-                setError("Impossible de charger les expériences.");
+                setError("Impossible de charger les ressources.");
             } finally {
                 if (mounted) setIsLoading(false);
             }
@@ -115,43 +130,50 @@ export default function ExperiencesSection({
         return () => { mounted = false; };
     }, []);
     
-    // Filtrer les expériences
+    // Fonction pour gérer le clic sur une expérience
+    const handleViewClick = (exp) => {
+        // Incrémenter le compteur de vues
+        const newViewCount = incrementViewCount(exp.id);
+        
+        // Mettre à jour l'affichage
+        setFilteredExperiments(prev => 
+            prev.map(item => 
+                item.id === exp.id 
+                    ? { ...item, views: newViewCount } 
+                    : item
+            ).sort((a, b) => b.views - a.views)
+        );
+        
+        // Navigation vers la page de détails
+        router.visit(`/resources/${exp.id}`, {
+            method: 'get',
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // Filtrer et trier les expériences
     useEffect(() => {
         if (!experiments.length) return;
         
-        const filtered = experiments.filter(exp => {
-            // Filtre par statut
-            if (filters.status && filters.status !== 'all' && exp.status !== filters.status) {
-                return false;
-            }
-            
-            // Filtre par recherche
-            if (filters.search && !exp.name.toLowerCase().includes(filters.search.toLowerCase())) {
-                return false;
-            }
-            
-            // Filtre par organisation
-            if (filters.organization && exp.organization !== filters.organization) {
-                return false;
-            }
-            
-            // Filtre par année
-            if (filters.year) {
-                const expYear = exp.startDate?.split('-')[0];
-                if (expYear !== filters.year) {
-                    return false;
-                }
-            }
-            
-            // Filtre par type (à adapter selon vos besoins)
-            if (filters.type) {
-                // Implémentez la logique de filtrage par type si nécessaire
-                // Par exemple, si vous avez un champ 'type' dans vos expériences
-                // if (exp.type !== filters.type) return false;
-            }
-            
-            return true;
-        });
+        const filtered = experiments
+            .map(exp => ({
+                ...exp,
+                views: getViewCount(exp.id) || 0
+            }))
+            .filter(exp => {
+                const matchesSearch = !filters.search || 
+                    (exp.title?.toLowerCase().includes(filters.search.toLowerCase()) || 
+                    (exp.description?.toLowerCase().includes(filters.search.toLowerCase()) || ''));
+                
+                const matchesYear = !filters.year || exp.year === filters.year;
+                const matchesOrg = !filters.organization || exp.organization === filters.organization;
+                const matchesStatus = filters.status === 'all' || exp.status === filters.status;
+                const matchesType = !filters.type || exp.type === filters.type;
+                
+                return matchesSearch && matchesYear && matchesOrg && matchesStatus && matchesType;
+            })
+            .sort((a, b) => (b.views || 0) - (a.views || 0)); // Tri par nombre de vues décroissant
         
         setFilteredExperiments(filtered);
     }, [experiments, filters]);
@@ -159,153 +181,93 @@ export default function ExperiencesSection({
     return (
         <Card className="mb-4">
             <Card.Body>
-                <div className="d-flex justify-content-between align-items-center mb-4" style={{ color: '#ffff' }}>
-                    <h2 className="h5 mb-0">Experiences</h2>
-                    <div className="d-flex gap-2">
-                        <Form.Select 
-                            size="sm" 
-                            style={{ width: '200px' }}
-                            value={filters.status}
-                            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                        >
-                            <option value="all">All experiences</option>
-                            <option value="in_progress">In progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="pending">Pending</option>
-                        </Form.Select>
-                        <div className="input-group" style={{ width: '250px' }}>
-                            <span className="input-group-text bg-transparent">
-                                <Search size={16} />
-                            </span>
-                            <Form.Control
-                                type="text"
-                                placeholder="Search..."
-                                value={filters.search}
-                                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                className="border-start-0"
-                            />
-                        </div>
-                        <Button 
-                            variant="outline-secondary" 
-                            size="sm"
-                            onClick={() => {
-                                // Réinitialiser tous les filtres
-                                setFilters({
-                                    status: 'all',
-                                    search: ''
-                                });
-                            }}
-                            title="Reset filters"
-                        >
-                            <ArrowCounterclockwise size={16} />
-                        </Button>
-                        <Button 
-                            variant="outline-primary" 
-                            size="sm"
-                            onClick={() => {
-                                // Télécharger les données au format CSV
-                                const headers = ['Name', 'Start Date', 'End Date', 'Status', 'Progress', 'Organization'];
-                                const csvContent = [
-                                    headers.join(','),
-                                    ...filteredExperiments.map(exp => 
-                                        [
-                                            `"${exp.name}"`,
-                                            exp.startDate,
-                                            exp.endDate,
-                                            exp.status,
-                                            `${exp.progress}%`,
-                                            exp.organization
-                                        ].join(',')
-                                    )
-                                ].join('\n');
-                                
-                                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.setAttribute('download', `experiments_${new Date().toISOString().split('T')[0]}.csv`);
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }}
-                            title="Download data as CSV"
-                        >
-                            <Download size={16} />
-                        </Button>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div className="d-flex align-items-center">
+                        <h5 className="mb-0 me-2">Resources</h5>
+                        <span className="text-muted small">
+                            <EyeFill className="me-1" />
+                            Classées par popularité
+                        </span>
                     </div>
                 </div>
-
                 <div className="table-responsive">
                     {isLoading && (
-                        <div className="text-center text-muted py-3">Loading experiences...</div>
+                        <div className="text-center text-muted py-3">Chargement des ressources...</div>
                     )}
                     {error && !isLoading && (
                         <div className="text-center text-danger py-3">{error}</div>
                     )}
-                    <Table hover className="align-middle">
-                        <thead style={{ color: '#000000' }}>
-                            <tr>
-                                <th>Experience name</th>
-                                <th>Period</th>
-                                <th>Status</th>
-                                <th>Progression</th>
-                                <th>Organization</th>
-                                <th className="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {!isLoading && !error && filteredExperiments.map(experiment => (
-                                <tr key={experiment.id}>
-                                    <td 
-                                        className="fw-medium" 
-                                        style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}
-                                        onClick={() => onSelectExperience && onSelectExperience(experiment)}
-                                    >
-                                        {experiment.name}
-                                    </td>
-                                    <td className="text-muted" style={{ color: '#fff' }}>
-                                        {experiment.startDate || '—'} - {experiment.endDate || '—'}
-                                    </td>
-                                    <td>
-                                        <Badge 
-                                            bg={getStatusVariant(experiment.status)}
-                                            className="text-capitalize"
-                                        >
-                                            {experiment.status || '—'}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <div className="d-flex align-items-center">
-                                            <div className="progress flex-grow-1 me-2" style={{ height: '6px' }}>
-                                                <div 
-                                                    className="progress-bar" 
-                                                    role="progressbar" 
-                                                    style={{ width: `${experiment.progress ?? 0}%` }}
-                                                    aria-valuenow={experiment.progress ?? 0}
-                                                    aria-valuemin="0" 
-                                                    aria-valuemax="100"
-                                                ></div>
-                                            </div>
-                                            <small className="text-muted">{experiment.progress ?? 0}%</small>
-                                        </div>
-                                    </td>
-                                    <td style={{ color: '#fff' }}>{experiment.organization || '—'}</td>
-                                    <td className="text-end">
-                                        <Button 
-                                            variant="outline-primary" 
-                                            size="sm"
-                                            onClick={() => window.location.href = `/resources/${experiment.id}`}
-                                        >
-                                            <Eye className="me-1" size={14} />
-                                            View
-                                        </Button>
-                                    </td>
+                    {!isLoading && !error && (
+                        <Table hover className="mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>Progression</th>
+                                    <th>Views</th>
+                                    <th>Organisation</th>
+                                    <th className="text-end">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {filteredExperiments.map(experiment => (
+                                    <tr key={experiment.id}>
+                                        <td 
+                                            className="fw-medium" 
+                                            style={{ color: '#fff', cursor: 'pointer', textDecoration: 'underline' }}
+                                            onClick={() => handleViewClick(experiment)}
+                                        >
+                                            {experiment.name || experiment.title || 'Sans nom'}
+                                        </td>
+                                        <td className="text-muted" style={{ color: '#fff' }}>
+                                            {experiment.startDate || '—'} - {experiment.endDate || '—'}
+                                        </td>
+                                        <td>
+                                            <Badge bg={getStatusVariant(experiment.status)}>
+                                                {experiment.status || '—'}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex align-items-center">
+                                                <div className="progress flex-grow-1 me-2" style={{ height: '6px' }}>
+                                                    <div 
+                                                        className="progress-bar" 
+                                                        role="progressbar" 
+                                                        style={{ width: `${experiment.progress || 0}%` }}
+                                                        aria-valuenow={experiment.progress || 0}
+                                                        aria-valuemin="0"
+                                                        aria-valuemax="100"
+                                                    ></div>
+                                                </div>
+                                                <small className="text-muted">{experiment.progress || 0}%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex align-items-center">
+                                                <EyeFill className="me-1" />
+                                                <span>{experiment.views || 0}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ color: '#fff' }}>{experiment.organization || '—'}</td>
+                                        <td className="text-end">
+                                            <Button 
+                                                variant="outline-primary" 
+                                                size="sm"
+                                                onClick={() => handleViewClick(experiment)}
+                                                title="Voir les détails"
+                                            >
+                                                <Eye className="me-1" size={14} />
+                                                Voir
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    )}
                 </div>
             </Card.Body>
         </Card>
     );
-}
+};
