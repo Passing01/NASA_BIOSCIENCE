@@ -316,13 +316,13 @@ export default function DashboardPage({ resources: initialResources = [] }) {
                                     />
                                 </div>
                                 
-                                {resources.length > displayCount && (
+                                {/* {resources.length > displayCount && (
                                     <div className="text-center mt-4">
                                         <Button onClick={showMore} variant="primary">
                                             Show more
                                         </Button>
                                     </div>
-                                )}
+                                )} */}
                             </div>
                         </div>
                     </div>
